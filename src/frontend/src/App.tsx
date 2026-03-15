@@ -1,9 +1,7 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import {
   CheckCircle2,
   ChevronRight,
-  IndianRupee,
   Layers,
   Package,
   Plus,
@@ -18,7 +16,12 @@ import AddVehiclePage from "./AddVehiclePage";
 import DeliveryPage from "./DeliveryPage";
 import DueAmountListPage from "./DueAmountListPage";
 import OrderListPage from "./OrderListPage";
-import { getLocalMetrics } from "./localOrderStore";
+import TotalBricksDueListPage from "./TotalBricksDueListPage";
+import {
+  getLocalMetrics,
+  getLocalOrders,
+  isOrderClosed,
+} from "./localOrderStore";
 
 type Page =
   | "dashboard"
@@ -28,7 +31,8 @@ type Page =
   | "addPayment"
   | "addVehicle"
   | "delivery"
-  | "dueAmountList";
+  | "dueAmountList"
+  | "bricksDueList";
 
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
@@ -71,7 +75,7 @@ function formatDateTime(date: Date) {
   const minutes = date.getMinutes().toString().padStart(2, "0");
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
-  return `${day}, ${d} ${month} ${year} · ${hours}:${minutes} ${ampm}`;
+  return `${day}, ${d} ${month} ${year} \u00b7 ${hours}:${minutes} ${ampm}`;
 }
 
 function StatCard({
@@ -203,9 +207,38 @@ function ActionCard({
   );
 }
 
+function computeActiveOrderCount(): number {
+  const allOrders = getLocalOrders();
+  let deliveries: { customerName: string; totalBricks: number }[] = [];
+  try {
+    deliveries = JSON.parse(localStorage.getItem("sbco_deliveries") || "[]");
+  } catch {
+    deliveries = [];
+  }
+  return allOrders.filter((o) => !isOrderClosed(o, deliveries, allOrders))
+    .length;
+}
+
 function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   const now = useLiveClock();
-  const metrics = getLocalMetrics();
+  const [metrics, setMetrics] = useState(getLocalMetrics);
+  const [activeOrderCount, setActiveOrderCount] = useState(
+    computeActiveOrderCount,
+  );
+
+  useEffect(() => {
+    const refresh = () => {
+      setMetrics(getLocalMetrics());
+      setActiveOrderCount(computeActiveOrderCount());
+    };
+    window.addEventListener("localOrdersUpdated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("localOrdersUpdated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
   const fmt = (v: number | undefined) => (v !== undefined ? v.toString() : "0");
 
   return (
@@ -372,7 +405,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 />
               }
               label="TOTAL BRICKS ORDER"
-              value={fmt(metrics?.totalOrders)}
+              value={fmt(activeOrderCount)}
               iconBg="#ff9800"
               iconColor="#ffffff"
               onClick={() => onNavigate("orderList")}
@@ -413,19 +446,21 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
               tappable
             />
             <StatCard
-              ocid="stats.item.4"
+              ocid="stats.total_bricks_due.button"
               icon={
-                <IndianRupee
+                <Package
                   style={{
                     width: "clamp(0.9rem, 2.8vw, 1.375rem)",
                     height: "clamp(0.9rem, 2.8vw, 1.375rem)",
                   }}
                 />
               }
-              label="TOTAL PAID AMOUNT"
-              value={fmt(metrics?.totalPaidAmount)}
-              iconBg="#1b5e20"
+              label="TOTAL BRICKS DUE"
+              value={fmt(metrics?.totalBricksDue)}
+              iconBg="#e53935"
               iconColor="#ffffff"
+              onClick={() => onNavigate("bricksDueList")}
+              tappable
             />
           </div>
 
@@ -458,20 +493,6 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
               onClick={() => onNavigate("addOrder")}
             />
             <ActionCard
-              ocid="action.delivery.button"
-              icon={
-                <Truck
-                  strokeWidth={1.8}
-                  style={{
-                    width: "clamp(1rem, 3.2vw, 1.625rem)",
-                    height: "clamp(1rem, 3.2vw, 1.625rem)",
-                  }}
-                />
-              }
-              label="DELIVERY"
-              onClick={() => onNavigate("delivery")}
-            />
-            <ActionCard
               ocid="action.add_vehicle.button"
               icon={
                 <span className="relative flex items-center">
@@ -495,30 +516,6 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
               label="ADD VEHICLE"
               onClick={() => onNavigate("addVehicle")}
             />
-            <ActionCard
-              ocid="action.add_payment.button"
-              icon={
-                <span className="relative flex items-center">
-                  <IndianRupee
-                    strokeWidth={1.8}
-                    style={{
-                      width: "clamp(1rem, 3.2vw, 1.625rem)",
-                      height: "clamp(1rem, 3.2vw, 1.625rem)",
-                    }}
-                  />
-                  <Plus
-                    strokeWidth={2.5}
-                    className="absolute -top-1 -right-2"
-                    style={{
-                      width: "clamp(0.6rem, 1.8vw, 0.8rem)",
-                      height: "clamp(0.6rem, 1.8vw, 0.8rem)",
-                    }}
-                  />
-                </span>
-              }
-              label="ADD PAYMENT"
-              onClick={() => onNavigate("addPayment")}
-            />
           </div>
         </main>
 
@@ -532,7 +529,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
             color: "#558b2f",
           }}
         >
-          © {new Date().getFullYear()}. Built with ❤️ using{" "}
+          \u00a9 {new Date().getFullYear()}. Built with \u2764\ufe0f using{" "}
           <a
             href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
             className="underline"
@@ -549,6 +546,14 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
 
 export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
+  const [preloadOrderId, setPreloadOrderId] = useState<string | undefined>(
+    undefined,
+  );
+
+  function handleDeliveryFromOrder(orderId: string) {
+    setPreloadOrderId(orderId);
+    setPage("delivery");
+  }
 
   return (
     <>
@@ -558,7 +563,10 @@ export default function App() {
         <AddOrderPage onBack={() => setPage("dashboard")} />
       )}
       {page === "orderList" && (
-        <OrderListPage onBack={() => setPage("dashboard")} />
+        <OrderListPage
+          onBack={() => setPage("dashboard")}
+          onDelivery={handleDeliveryFromOrder}
+        />
       )}
       {page === "closedOrders" && (
         <OrderListPage
@@ -573,10 +581,25 @@ export default function App() {
         <AddVehiclePage onBack={() => setPage("dashboard")} />
       )}
       {page === "delivery" && (
-        <DeliveryPage onBack={() => setPage("dashboard")} />
+        <DeliveryPage
+          onBack={() => {
+            setPreloadOrderId(undefined);
+            setPage("dashboard");
+          }}
+          preloadOrderId={preloadOrderId}
+        />
       )}
       {page === "dueAmountList" && (
-        <DueAmountListPage onBack={() => setPage("dashboard")} />
+        <DueAmountListPage
+          onBack={() => setPage("dashboard")}
+          onDelivery={handleDeliveryFromOrder}
+        />
+      )}
+      {page === "bricksDueList" && (
+        <TotalBricksDueListPage
+          onBack={() => setPage("dashboard")}
+          onDelivery={handleDeliveryFromOrder}
+        />
       )}
     </>
   );

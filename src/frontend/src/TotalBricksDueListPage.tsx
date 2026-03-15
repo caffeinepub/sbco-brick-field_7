@@ -3,6 +3,7 @@ import {
   Calendar,
   FileText,
   IndianRupee,
+  Layers,
   MapPin,
   Phone,
   Search,
@@ -16,62 +17,154 @@ import {
   getLocalOrders,
 } from "./localOrderStore";
 
-interface DueCustomer {
+interface BricksDueCustomer {
   customerName: string;
   invoiceNo: string;
   phone: string;
   address: string;
-  totalDue: number;
+  totalBricksDue: number;
+  brickTypeBreakdown: { brickType: string; due: number }[];
   orderIds: string[];
   primaryOrderId: string;
 }
 
-function buildDueList(): DueCustomer[] {
+function buildBricksDueList(): BricksDueCustomer[] {
   const orders = getLocalOrders();
-  const map = new Map<string, DueCustomer>();
+  let deliveries: {
+    customerName: string;
+    totalBricks: number;
+    bricks?: { brickType: string; qty: number }[];
+  }[] = [];
+  try {
+    deliveries = JSON.parse(localStorage.getItem("sbco_deliveries") || "[]");
+  } catch {
+    deliveries = [];
+  }
+
+  // Group by customer
+  const map = new Map<
+    string,
+    {
+      orderedByType: Map<string, number>;
+      deliveredByType: Map<string, number>;
+      customer: BricksDueCustomer;
+    }
+  >();
+
   for (const order of orders) {
-    if (order.dueAmount > 0) {
-      const key = order.customerName.toLowerCase().trim();
-      if (map.has(key)) {
-        const existing = map.get(key)!;
-        existing.totalDue += order.dueAmount;
-        if (order.invoiceNo) existing.invoiceNo = order.invoiceNo;
-        existing.orderIds.push(order.id);
-      } else {
-        map.set(key, {
+    const key = order.customerName.toLowerCase().trim();
+    if (!map.has(key)) {
+      map.set(key, {
+        orderedByType: new Map(),
+        deliveredByType: new Map(),
+        customer: {
           customerName: order.customerName,
           invoiceNo: order.invoiceNo || "",
           phone: order.phone,
           address: order.address,
-          totalDue: order.dueAmount,
-          orderIds: [order.id],
+          totalBricksDue: 0,
+          brickTypeBreakdown: [],
+          orderIds: [],
           primaryOrderId: order.id,
-        });
-      }
+        },
+      });
+    }
+    const entry = map.get(key)!;
+    entry.customer.orderIds.push(order.id);
+    if (order.invoiceNo) entry.customer.invoiceNo = order.invoiceNo;
+    // accumulate ordered bricks by type
+    for (const b of order.bricks) {
+      entry.orderedByType.set(
+        b.brickType,
+        (entry.orderedByType.get(b.brickType) || 0) + b.qty,
+      );
     }
   }
-  return Array.from(map.values());
+
+  for (const delivery of deliveries) {
+    const key = delivery.customerName.toLowerCase().trim();
+    if (!map.has(key)) continue;
+    const entry = map.get(key)!;
+    // accumulate delivered bricks by type
+    if (delivery.bricks && delivery.bricks.length > 0) {
+      for (const b of delivery.bricks) {
+        entry.deliveredByType.set(
+          b.brickType,
+          (entry.deliveredByType.get(b.brickType) || 0) + b.qty,
+        );
+      }
+    } else {
+      // fallback: subtract from total if no breakdown
+      entry.deliveredByType.set(
+        "__total__",
+        (entry.deliveredByType.get("__total__") || 0) + delivery.totalBricks,
+      );
+    }
+  }
+
+  const result: BricksDueCustomer[] = [];
+  for (const [, entry] of map) {
+    const breakdown: { brickType: string; due: number }[] = [];
+    let totalDue = 0;
+
+    for (const [brickType, ordered] of entry.orderedByType) {
+      const delivered = entry.deliveredByType.get(brickType) || 0;
+      const due = Math.max(0, ordered - delivered);
+      if (due > 0) {
+        breakdown.push({ brickType, due });
+        totalDue += due;
+      }
+    }
+
+    // Handle fallback __total__ delivery subtraction
+    const fallbackDelivered = entry.deliveredByType.get("__total__") || 0;
+    if (fallbackDelivered > 0 && breakdown.length === 0) {
+      const totalOrdered = Array.from(entry.orderedByType.values()).reduce(
+        (s, v) => s + v,
+        0,
+      );
+      totalDue = Math.max(0, totalOrdered - fallbackDelivered);
+      if (totalDue > 0) {
+        // distribute due proportionally across brick types
+        let remaining = totalDue;
+        for (const [brickType, ordered] of entry.orderedByType) {
+          if (remaining <= 0) break;
+          const due = Math.min(remaining, ordered);
+          if (due > 0) breakdown.push({ brickType, due });
+          remaining -= due;
+        }
+      }
+    }
+
+    if (totalDue > 0) {
+      entry.customer.totalBricksDue = totalDue;
+      entry.customer.brickTypeBreakdown = breakdown;
+      result.push(entry.customer);
+    }
+  }
+  return result;
 }
 
 type PaymentMethod = "cash" | "upi" | "bank";
 
-export default function DueAmountListPage({
+export default function TotalBricksDueListPage({
   onBack,
   onDelivery,
 }: {
   onBack: () => void;
   onDelivery?: (orderId: string) => void;
 }) {
-  const [dueList, setDueList] = useState<DueCustomer[]>(buildDueList);
+  const [list, setList] = useState<BricksDueCustomer[]>(buildBricksDueList);
   const [search, setSearch] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const [invoiceCustomer, setInvoiceCustomer] = useState<DueCustomer | null>(
-    null,
-  );
+  const [invoiceCustomer, setInvoiceCustomer] =
+    useState<BricksDueCustomer | null>(null);
   const [invoiceOrders, setInvoiceOrders] = useState<LocalOrder[]>([]);
 
-  const [payCustomer, setPayCustomer] = useState<DueCustomer | null>(null);
+  const [payCustomer, setPayCustomer] = useState<BricksDueCustomer | null>(
+    null,
+  );
   const [payAmount, setPayAmount] = useState("");
   const [payDate, setPayDate] = useState(
     () => new Date().toISOString().split("T")[0],
@@ -82,7 +175,7 @@ export default function DueAmountListPage({
   const dateRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const refresh = () => setDueList(buildDueList());
+    const refresh = () => setList(buildBricksDueList());
     window.addEventListener("storage", refresh);
     window.addEventListener("localOrdersUpdated", refresh);
     return () => {
@@ -91,18 +184,18 @@ export default function DueAmountListPage({
     };
   }, []);
 
-  const filtered = dueList.filter((c) =>
+  const filtered = list.filter((c) =>
     c.customerName.toLowerCase().includes(search.toLowerCase()),
   );
 
-  function openInvoice(customer: DueCustomer) {
+  function openInvoice(customer: BricksDueCustomer) {
     const allOrders = getLocalOrders();
     const orders = allOrders.filter((o) => customer.orderIds.includes(o.id));
     setInvoiceOrders(orders);
     setInvoiceCustomer(customer);
   }
 
-  function openPayment(customer: DueCustomer) {
+  function openPayment(customer: BricksDueCustomer) {
     setPayCustomer(customer);
     setPayAmount("");
     setPayDate(new Date().toISOString().split("T")[0]);
@@ -118,16 +211,17 @@ export default function DueAmountListPage({
       setPayError("Please enter a valid payment amount.");
       return;
     }
-    if (amt > payCustomer.totalDue) {
-      setPayError(
-        `Amount cannot exceed due ₹${payCustomer.totalDue.toLocaleString("en-IN")}.`,
-      );
-      return;
-    }
     const allOrders = getLocalOrders();
     const customerOrders = allOrders
       .filter((o) => payCustomer.orderIds.includes(o.id) && o.dueAmount > 0)
       .sort((a, b) => a.createdAt - b.createdAt);
+    const totalDue = customerOrders.reduce((s, o) => s + o.dueAmount, 0);
+    if (amt > totalDue) {
+      setPayError(
+        `Amount cannot exceed due ₹${totalDue.toLocaleString("en-IN")}.`,
+      );
+      return;
+    }
     let remaining = amt;
     const time = new Date().toLocaleTimeString("en-GB", {
       hour: "2-digit",
@@ -140,7 +234,7 @@ export default function DueAmountListPage({
       remaining -= pay;
     }
     window.dispatchEvent(new Event("localOrdersUpdated"));
-    setDueList(buildDueList());
+    setList(buildBricksDueList());
     setPayCustomer(null);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 2800);
@@ -162,18 +256,18 @@ export default function DueAmountListPage({
       {/* Header */}
       <div
         style={{
-          background: "linear-gradient(135deg, #1565c0 0%, #1e88e5 100%)",
+          background: "linear-gradient(135deg, #b71c1c 0%, #e53935 100%)",
           padding: "clamp(10px,3vw,18px) clamp(12px,4vw,20px)",
           display: "flex",
           alignItems: "center",
           gap: "12px",
-          boxShadow: "0 2px 8px rgba(21,101,192,0.3)",
+          boxShadow: "0 2px 8px rgba(183,28,28,0.3)",
           flexShrink: 0,
         }}
       >
         <button
           type="button"
-          data-ocid="due_list.back_button"
+          data-ocid="bricks_due_list.back_button"
           onClick={onBack}
           style={{
             background: "rgba(255,255,255,0.2)",
@@ -188,16 +282,19 @@ export default function DueAmountListPage({
         >
           <ArrowLeft size={20} />
         </button>
-        <h1
-          style={{
-            color: "#fff",
-            fontSize: "clamp(1rem,4vw,1.25rem)",
-            fontWeight: 700,
-            margin: 0,
-          }}
-        >
-          Due Amount List
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Layers size={20} color="#fff" />
+          <h1
+            style={{
+              color: "#fff",
+              fontSize: "clamp(1rem,4vw,1.25rem)",
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            Total Bricks Due List
+          </h1>
+        </div>
       </div>
 
       {/* Search */}
@@ -221,8 +318,8 @@ export default function DueAmountListPage({
             }}
           />
           <input
-            id="due-search"
-            data-ocid="due_list.search_input"
+            id="bricks-due-search"
+            data-ocid="bricks_due_list.search_input"
             type="text"
             placeholder="Search Customer Name..."
             value={search}
@@ -252,14 +349,14 @@ export default function DueAmountListPage({
             fontWeight: 600,
           }}
         >
-          Due Customers ({filtered.length})
+          Customers with Bricks Due ({filtered.length})
         </p>
       </div>
 
       {/* Success toast */}
       {showSuccess && (
         <div
-          data-ocid="due_list.success_state"
+          data-ocid="bricks_due_list.success_state"
           style={{
             margin: "0 14px 6px",
             background: "linear-gradient(90deg, #2e7d32, #43a047)",
@@ -281,7 +378,7 @@ export default function DueAmountListPage({
 
       {/* List */}
       <div
-        data-ocid="due_list.list"
+        data-ocid="bricks_due_list.list"
         style={{
           flex: 1,
           overflowY: "auto",
@@ -293,26 +390,28 @@ export default function DueAmountListPage({
       >
         {filtered.length === 0 ? (
           <div
-            data-ocid="due_list.empty_state"
+            data-ocid="bricks_due_list.empty_state"
             style={{
               textAlign: "center",
               padding: "40px 20px",
               color: "#90a4ae",
             }}
           >
-            <div style={{ fontSize: "40px", marginBottom: "10px" }}>✅</div>
+            <div style={{ fontSize: "40px", marginBottom: "10px" }}>🧱</div>
             <p style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>
-              {search ? "No matching customers found" : "No due amounts!"}
+              {search ? "No matching customers found" : "No bricks due!"}
             </p>
             <p style={{ fontSize: "13px", marginTop: "6px" }}>
-              {search ? "Try a different name" : "All payments are up to date."}
+              {search
+                ? "Try a different name"
+                : "All bricks have been delivered."}
             </p>
           </div>
         ) : (
           filtered.map((customer, idx) => (
             <div
               key={customer.customerName}
-              data-ocid={`due_list.item.${idx + 1}`}
+              data-ocid={`bricks_due_list.item.${idx + 1}`}
               style={{
                 background: "#fff",
                 borderRadius: "16px",
@@ -393,37 +492,89 @@ export default function DueAmountListPage({
                 </span>
               </div>
 
-              {/* Row 4: Due amount pill */}
+              {/* Row 4: Bricks Due box with type breakdown */}
               <div
                 style={{
                   background: "#fff5f5",
                   border: "1px solid #ffcdd2",
                   borderRadius: "10px",
-                  padding: "8px 12px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  padding: "10px 12px",
                   marginBottom: "12px",
                 }}
               >
-                <span
+                <div
                   style={{
-                    fontSize: "12px",
-                    color: "#e53935",
-                    fontWeight: 600,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom:
+                      customer.brickTypeBreakdown.length > 0 ? "8px" : "0",
                   }}
                 >
-                  Total Due Amount
-                </span>
-                <span
-                  style={{
-                    fontSize: "17px",
-                    fontWeight: 800,
-                    color: "#c62828",
-                  }}
-                >
-                  ₹{customer.totalDue.toLocaleString("en-IN")}
-                </span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Layers size={15} color="#e53935" />
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "#e53935",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Total Bricks Due
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "17px",
+                      fontWeight: 800,
+                      color: "#c62828",
+                    }}
+                  >
+                    {customer.totalBricksDue.toLocaleString("en-IN")} Bricks
+                  </span>
+                </div>
+                {/* Brick type breakdown */}
+                {customer.brickTypeBreakdown.length > 0 && (
+                  <div
+                    style={{
+                      borderTop: "1px solid #ffcdd2",
+                      paddingTop: "7px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "3px",
+                    }}
+                  >
+                    {customer.brickTypeBreakdown.map((b) => (
+                      <div
+                        key={b.brickType}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span style={{ fontSize: "12px", color: "#78909c" }}>
+                          {b.brickType}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: "#c62828",
+                          }}
+                        >
+                          {b.due.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Action buttons — 3 in one row */}
@@ -431,7 +582,7 @@ export default function DueAmountListPage({
                 {/* View Invoice */}
                 <button
                   type="button"
-                  data-ocid={`due_list.view_invoice.button.${idx + 1}`}
+                  data-ocid={`bricks_due_list.view_invoice.button.${idx + 1}`}
                   onClick={() => openInvoice(customer)}
                   style={{
                     flex: 1,
@@ -456,7 +607,7 @@ export default function DueAmountListPage({
                 {/* Delivery */}
                 <button
                   type="button"
-                  data-ocid={`due_list.delivery.button.${idx + 1}`}
+                  data-ocid={`bricks_due_list.delivery.button.${idx + 1}`}
                   onClick={() => onDelivery?.(customer.primaryOrderId)}
                   style={{
                     flex: 1,
@@ -481,7 +632,7 @@ export default function DueAmountListPage({
                 {/* Add Payment */}
                 <button
                   type="button"
-                  data-ocid={`due_list.add_payment.button.${idx + 1}`}
+                  data-ocid={`bricks_due_list.add_payment.button.${idx + 1}`}
                   onClick={() => openPayment(customer)}
                   style={{
                     flex: 1,
@@ -843,44 +994,9 @@ export default function DueAmountListPage({
                 <X size={18} color="#546e7a" />
               </button>
             </div>
-
             <div style={{ overflowY: "auto", padding: "0 18px 24px", flex: 1 }}>
-              {/* Due info */}
-              <div
-                style={{
-                  background: "#fff5f5",
-                  border: "1px solid #ffcdd2",
-                  borderRadius: "10px",
-                  padding: "10px 14px",
-                  marginBottom: "16px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: "#c62828",
-                    fontWeight: 600,
-                  }}
-                >
-                  Total Due
-                </span>
-                <span
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    color: "#b71c1c",
-                  }}
-                >
-                  ₹{payCustomer.totalDue.toLocaleString("en-IN")}
-                </span>
-              </div>
-
-              {/* Payment Amount */}
               <label
-                htmlFor="pay-amount"
+                htmlFor="bricks-pay-amount"
                 style={{
                   display: "block",
                   fontSize: "12px",
@@ -913,8 +1029,8 @@ export default function DueAmountListPage({
                   <IndianRupee size={16} />
                 </div>
                 <input
-                  id="pay-amount"
-                  data-ocid="due_payment.amount.input"
+                  id="bricks-pay-amount"
+                  data-ocid="bricks_due_payment.amount.input"
                   type="number"
                   placeholder="0"
                   value={payAmount}
@@ -935,9 +1051,8 @@ export default function DueAmountListPage({
                 />
               </div>
 
-              {/* Payment Date */}
               <label
-                htmlFor="pay-date"
+                htmlFor="bricks-pay-date"
                 style={{
                   display: "block",
                   fontSize: "12px",
@@ -977,8 +1092,8 @@ export default function DueAmountListPage({
                 </div>
                 <input
                   ref={dateRef}
-                  id="pay-date"
-                  data-ocid="due_payment.date.input"
+                  id="bricks-pay-date"
+                  data-ocid="bricks_due_payment.date.input"
                   type="date"
                   value={payDate}
                   onChange={(e) => setPayDate(e.target.value)}
@@ -995,7 +1110,6 @@ export default function DueAmountListPage({
                 />
               </div>
 
-              {/* Payment Method */}
               <p
                 style={{
                   fontSize: "12px",
@@ -1013,17 +1127,17 @@ export default function DueAmountListPage({
                   {
                     key: "cash" as PaymentMethod,
                     label: "💵 Cash",
-                    ocid: "due_payment.method.cash",
+                    ocid: "bricks_due_payment.method.cash",
                   },
                   {
                     key: "upi" as PaymentMethod,
                     label: "📱 UPI",
-                    ocid: "due_payment.method.upi",
+                    ocid: "bricks_due_payment.method.upi",
                   },
                   {
                     key: "bank" as PaymentMethod,
                     label: "🏦 Bank Transfer",
-                    ocid: "due_payment.method.bank_transfer",
+                    ocid: "bricks_due_payment.method.bank_transfer",
                   },
                 ].map((m) => (
                   <button
@@ -1052,9 +1166,8 @@ export default function DueAmountListPage({
                 ))}
               </div>
 
-              {/* Note */}
               <label
-                htmlFor="pay-note"
+                htmlFor="bricks-pay-note"
                 style={{
                   display: "block",
                   fontSize: "12px",
@@ -1066,8 +1179,8 @@ export default function DueAmountListPage({
                 Note (Optional)
               </label>
               <textarea
-                id="pay-note"
-                data-ocid="due_payment.note.textarea"
+                id="bricks-pay-note"
+                data-ocid="bricks_due_payment.note.textarea"
                 rows={2}
                 placeholder="Add a note..."
                 value={payNote}
@@ -1103,7 +1216,7 @@ export default function DueAmountListPage({
 
               <button
                 type="button"
-                data-ocid="due_payment.save.button"
+                data-ocid="bricks_due_payment.save.button"
                 onClick={handleSavePayment}
                 style={{
                   width: "100%",

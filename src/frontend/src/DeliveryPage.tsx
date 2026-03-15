@@ -1,5 +1,5 @@
 import { ArrowLeft, CalendarDays, Check, Truck } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getLocalVehicles } from "./AddVehiclePage";
 import { getLocalOrders } from "./localOrderStore";
@@ -75,6 +75,7 @@ function fromInputValue(str: string): string {
 
 interface Props {
   onBack: () => void;
+  preloadOrderId?: string;
 }
 
 function stopEvent(e: React.SyntheticEvent) {
@@ -161,7 +162,7 @@ function DatePickerField({
   );
 }
 
-export default function DeliveryPage({ onBack }: Props) {
+export default function DeliveryPage({ onBack, preloadOrderId }: Props) {
   const [date, setDate] = useState(todayDate());
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
@@ -177,6 +178,19 @@ export default function DeliveryPage({ onBack }: Props) {
 
   const vehicles = getLocalVehicles();
   const allOrders = getLocalOrders();
+
+  // Preload order details when navigating from Order Details page
+  useEffect(() => {
+    if (!preloadOrderId) return;
+    const order = allOrders.find((o) => o.id === preloadOrderId);
+    if (order) {
+      setCustomerName(order.customerName);
+      setAddress(order.address || "");
+      setPhone(order.phone || "");
+      setInvoiceNo(order.invoiceNo || "");
+      setSelectedOrderId(order.id);
+    }
+  }, [preloadOrderId, allOrders]);
 
   const totalBricksQty = Object.values(selectedBricks).reduce(
     (a, b) => a + b,

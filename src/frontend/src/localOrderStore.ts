@@ -28,6 +28,22 @@ export interface LocalOrder {
 
 const STORAGE_KEY = "sbco_orders";
 
+/** Safely compute totalBricks from bricks array as fallback for legacy orders */
+function resolveTotalBricks(order: LocalOrder): number {
+  if (
+    order.totalBricks != null &&
+    !Number.isNaN(order.totalBricks) &&
+    order.totalBricks > 0
+  ) {
+    return order.totalBricks;
+  }
+  // Fallback: sum from bricks array (handles old orders missing totalBricks)
+  if (Array.isArray(order.bricks)) {
+    return order.bricks.reduce((s, b) => s + (Number(b.qty) || 0), 0);
+  }
+  return 0;
+}
+
 export function getLocalOrders(): LocalOrder[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -102,15 +118,13 @@ export function isOrderClosed(
   allOrders: LocalOrder[],
 ): boolean {
   if (order.dueAmount !== 0) return false;
-  // Sum all bricks ordered for this customer
   const name = order.customerName.toLowerCase();
   const totalOrdered = allOrders
     .filter((o) => o.customerName.toLowerCase() === name)
-    .reduce((s, o) => s + o.totalBricks, 0);
-  // Sum all bricks delivered for this customer
+    .reduce((s, o) => s + resolveTotalBricks(o), 0);
   const totalDelivered = allDeliveries
     .filter((d) => d.customerName.toLowerCase() === name)
-    .reduce((s, d) => s + d.totalBricks, 0);
+    .reduce((s, d) => s + (Number(d.totalBricks) || 0), 0);
   return totalDelivered >= totalOrdered && totalOrdered > 0;
 }
 
@@ -125,11 +139,26 @@ export function getLocalMetrics() {
   const closedCount = orders.filter((o) =>
     isOrderClosed(o, deliveries, orders),
   ).length;
+
+  // Use resolveTotalBricks to handle legacy orders where totalBricks may be 0/undefined
+  const totalBricksOrdered = orders.reduce(
+    (s, o) => s + resolveTotalBricks(o),
+    0,
+  );
+  const totalBricksDelivered = deliveries.reduce(
+    (s, d) => s + (Number(d.totalBricks) || 0),
+    0,
+  );
+  const totalBricksDue = Math.max(0, totalBricksOrdered - totalBricksDelivered);
   return {
     totalOrders: orders.length,
-    totalPaidAmount: orders.reduce((s, o) => s + o.paidAmount, 0),
-    totalDueAmount: orders.reduce((s, o) => s + o.dueAmount, 0),
-    bricksDispatched: orders.reduce((s, o) => s + o.totalBricks, 0),
+    totalPaidAmount: orders.reduce(
+      (s, o) => s + (Number(o.paidAmount) || 0),
+      0,
+    ),
+    totalDueAmount: orders.reduce((s, o) => s + (Number(o.dueAmount) || 0), 0),
+    bricksDispatched: totalBricksDelivered,
     orderClosed: closedCount,
+    totalBricksDue,
   };
 }
