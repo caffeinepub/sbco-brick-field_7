@@ -1,0 +1,84 @@
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0.98 0.005 150;
+    --foreground: 0.18 0.06 150;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.06 150;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.06 150;
+
+    --primary: 0.38 0.13 150;
+    --primary-foreground: 1 0 0;
+
+    --secondary: 0.92 0.04 150;
+    --secondary-foreground: 0.25 0.1 150;
+
+    --muted: 0.94 0.02 150;
+    --muted-foreground: 0.55 0.04 150;
+
+    --accent: 0.88 0.07 150;
+    --accent-foreground: 0.25 0.1 150;
+
+    --destructive: 0.6 0.22 25;
+    --destructive-foreground: 1 0 0;
+
+    --border: 0.88 0.04 150;
+    --input: 0.88 0.04 150;
+    --ring: 0.38 0.13 150;
+
+    --radius: 0.75rem;
+
+    --chart-1: 0.6 0.15 150;
+    --chart-2: 0.5 0.18 200;
+    --chart-3: 0.65 0.18 80;
+    --chart-4: 0.7 0.15 30;
+    --chart-5: 0.55 0.12 270;
+
+    --sidebar: 0.95 0.03 150;
+    --sidebar-foreground: 0.18 0.06 150;
+    --sidebar-primary: 0.38 0.13 150;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.88 0.07 150;
+    --sidebar-accent-foreground: 0.25 0.1 150;
+    --sidebar-border: 0.88 0.04 150;
+    --sidebar-ring: 0.38 0.13 150;
+
+    /* App-specific tokens */
+    --app-green-dark: oklch(0.32 0.12 150);
+    --app-green-mid: oklch(0.48 0.16 150);
+    --app-green-light: oklch(0.88 0.07 150);
+    --app-green-bg: oklch(0.95 0.04 150);
+    --app-orange: oklch(0.72 0.18 55);
+    --app-blue: oklch(0.6 0.16 240);
+    --app-emerald: oklch(0.68 0.19 155);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", "General Sans", sans-serif;
+  }
+}
