@@ -1,4 +1,4 @@
-import { ArrowLeft, Truck } from "lucide-react";
+import { ArrowLeft, Trash2, Truck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -26,9 +26,121 @@ function saveVehicles(vehicles: LocalVehicle[]) {
   localStorage.setItem(VEHICLES_KEY, JSON.stringify(vehicles));
 }
 
+// Delete Confirmation Dialog
+function DeleteConfirmDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      data-ocid="add_vehicle.dialog"
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1.5rem",
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "1.25rem",
+          padding: "1.75rem 1.5rem",
+          width: "100%",
+          maxWidth: "320px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+        }}
+      >
+        <div
+          style={{
+            width: "3rem",
+            height: "3rem",
+            borderRadius: "50%",
+            backgroundColor: "#fdecea",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 1rem",
+          }}
+        >
+          <Trash2 size={20} color="#c62828" />
+        </div>
+        <h3
+          style={{
+            fontWeight: 800,
+            fontSize: "1.05rem",
+            color: "#212121",
+            margin: "0 0 0.5rem",
+            textAlign: "center",
+          }}
+        >
+          Delete Confirmation
+        </h3>
+        <p
+          style={{
+            fontSize: "0.85rem",
+            color: "#757575",
+            margin: "0 0 1.5rem",
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          Are you sure you want to delete this? This action cannot be undone.
+        </p>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            type="button"
+            data-ocid="add_vehicle.delete_dialog.cancel_button"
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              padding: "0.75rem",
+              border: "1.5px solid #e0e0e0",
+              borderRadius: "0.75rem",
+              backgroundColor: "#ffffff",
+              color: "#424242",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-ocid="add_vehicle.delete_dialog.confirm_button"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              padding: "0.75rem",
+              border: "none",
+              borderRadius: "0.75rem",
+              backgroundColor: "#c62828",
+              color: "#ffffff",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AddVehiclePage({ onBack }: Props) {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [vehicles, setVehicles] = useState<LocalVehicle[]>(getLocalVehicles);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const inputStyle = {
     border: "1.5px solid #a5d6a7",
@@ -92,11 +204,21 @@ export default function AddVehiclePage({ onBack }: Props) {
     toast.success(`Vehicle ${trimmed} added!`);
   }
 
-  function handleDelete(id: string) {
-    const updated = getLocalVehicles().filter((v) => v.id !== id);
+  function requestDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  function confirmDelete() {
+    if (!deleteConfirmId) return;
+    const updated = getLocalVehicles().filter((v) => v.id !== deleteConfirmId);
     saveVehicles(updated);
     setVehicles(updated);
+    setDeleteConfirmId(null);
     toast.success("Vehicle removed");
+  }
+
+  function cancelDelete() {
+    setDeleteConfirmId(null);
   }
 
   return (
@@ -111,6 +233,14 @@ export default function AddVehiclePage({ onBack }: Props) {
         margin: "0 auto",
       }}
     >
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <DeleteConfirmDialog
+          onCancel={cancelDelete}
+          onConfirm={confirmDelete}
+        />
+      )}
+
       <header
         style={{
           backgroundColor: "#ffffff",
@@ -274,7 +404,7 @@ export default function AddVehiclePage({ onBack }: Props) {
                   <button
                     type="button"
                     data-ocid={`add_vehicle.delete_vehicle.button.${i + 1}`}
-                    onClick={() => handleDelete(v.id)}
+                    onClick={() => requestDelete(v.id)}
                     style={{
                       backgroundColor: "#ffebee",
                       border: "none",

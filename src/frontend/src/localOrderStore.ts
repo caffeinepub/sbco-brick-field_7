@@ -17,6 +17,7 @@ export interface LocalOrder {
   invoiceNo?: string;
   approxDeliveryDate?: string;
   bricks: { brickType: string; qty: number }[];
+  rate?: number;
   totalBricks: number;
   totalAmount: number;
   paidAmount: number;

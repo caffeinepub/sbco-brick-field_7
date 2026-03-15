@@ -38,6 +38,117 @@ function getOrderTime(order: LocalOrder): string {
   return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Confirmation Dialog Component
+function DeleteConfirmDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      data-ocid="order_list.dialog"
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1.5rem",
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "1.25rem",
+          padding: "1.75rem 1.5rem",
+          width: "100%",
+          maxWidth: "320px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+        }}
+      >
+        <div
+          style={{
+            width: "3rem",
+            height: "3rem",
+            borderRadius: "50%",
+            backgroundColor: "#fdecea",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 1rem",
+          }}
+        >
+          <Trash2 size={20} color="#c62828" />
+        </div>
+        <h3
+          style={{
+            fontWeight: 800,
+            fontSize: "1.05rem",
+            color: "#212121",
+            margin: "0 0 0.5rem",
+            textAlign: "center",
+          }}
+        >
+          Delete Confirmation
+        </h3>
+        <p
+          style={{
+            fontSize: "0.85rem",
+            color: "#757575",
+            margin: "0 0 1.5rem",
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          Are you sure you want to delete this? This action cannot be undone.
+        </p>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            type="button"
+            data-ocid="order_list.delete_dialog.cancel_button"
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              padding: "0.75rem",
+              border: "1.5px solid #e0e0e0",
+              borderRadius: "0.75rem",
+              backgroundColor: "#ffffff",
+              color: "#424242",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-ocid="order_list.delete_dialog.confirm_button"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              padding: "0.75rem",
+              border: "none",
+              borderRadius: "0.75rem",
+              backgroundColor: "#c62828",
+              color: "#ffffff",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrderCard({
   order,
   index,
@@ -606,6 +717,415 @@ function OrderCard({
   );
 }
 
+function ClosedOrderCard({
+  order,
+  index,
+  onDelete,
+}: {
+  order: LocalOrder;
+  index: number;
+  onDelete: (id: string) => void;
+}) {
+  const totalBricksInOrder = order.bricks.reduce((sum, b) => sum + b.qty, 0);
+
+  return (
+    <div
+      data-ocid={`closed_orders.item.${index + 1}`}
+      style={{
+        backgroundColor: "#f0fdf4",
+        borderRadius: "1rem",
+        padding: "1rem",
+        boxShadow: "0 2px 8px rgba(46,125,50,0.1)",
+        border: "1.5px solid #a5d6a7",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+      }}
+    >
+      {/* Header: Closed badge + delete */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+          <CheckCircle2 size={13} color="#2e7d32" />
+          <span
+            style={{
+              fontSize: "0.6rem",
+              fontWeight: 800,
+              color: "#2e7d32",
+              textTransform: "uppercase",
+              letterSpacing: "0.12em",
+              backgroundColor: "#e8f5e9",
+              borderRadius: "2rem",
+              padding: "0.15rem 0.5rem",
+            }}
+          >
+            Order Closed
+          </span>
+        </div>
+        <button
+          type="button"
+          data-ocid={`closed_orders.delete_button.${index + 1}`}
+          onClick={() => onDelete(order.id)}
+          style={{
+            backgroundColor: "#fdecea",
+            border: "none",
+            borderRadius: "50%",
+            width: "2rem",
+            height: "2rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <Trash2 size={13} color="#c62828" />
+        </button>
+      </div>
+
+      <div style={{ height: "1px", backgroundColor: "#c8e6c9" }} />
+
+      {/* Date */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.7rem",
+            color: "#757575",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Date
+        </span>
+        <span
+          style={{ fontSize: "0.85rem", fontWeight: 700, color: "#212121" }}
+        >
+          {order.date}
+        </span>
+      </div>
+
+      {/* Name */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.7rem",
+            color: "#757575",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Name
+        </span>
+        <span
+          style={{ fontSize: "0.95rem", fontWeight: 800, color: "#2e7d32" }}
+        >
+          {order.customerName}
+        </span>
+      </div>
+
+      {/* Phone */}
+      {order.phone && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.7rem",
+              color: "#757575",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            Phone
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            <Phone size={13} color="#616161" />
+            <span
+              style={{ fontSize: "0.85rem", fontWeight: 600, color: "#424242" }}
+            >
+              {order.phone}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Address */}
+      {order.address && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "0.5rem",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.7rem",
+              color: "#757575",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Address
+          </span>
+          <span
+            style={{
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "#424242",
+              textAlign: "right",
+            }}
+          >
+            {order.address}
+          </span>
+        </div>
+      )}
+
+      <div style={{ height: "1px", backgroundColor: "#c8e6c9" }} />
+
+      {/* Bricks Type & Quantity */}
+      <div>
+        <span
+          style={{
+            fontSize: "0.7rem",
+            color: "#757575",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Bricks
+        </span>
+        <div
+          style={{
+            marginTop: "0.35rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.2rem",
+          }}
+        >
+          {order.bricks.map((b) => (
+            <div
+              key={b.brickType}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                backgroundColor: "#e8f5e9",
+                borderRadius: "0.5rem",
+                padding: "0.3rem 0.6rem",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  color: "#2e7d32",
+                }}
+              >
+                {b.brickType}
+              </span>
+              <span
+                style={{
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  color: "#1b5e20",
+                }}
+              >
+                {b.qty.toLocaleString()}
+              </span>
+            </div>
+          ))}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "0.2rem 0.6rem",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "#388e3c",
+                textTransform: "uppercase",
+              }}
+            >
+              Total
+            </span>
+            <span
+              style={{ fontSize: "0.9rem", fontWeight: 800, color: "#1b5e20" }}
+            >
+              {totalBricksInOrder.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ height: "1px", backgroundColor: "#c8e6c9" }} />
+
+      {/* Rate */}
+      {order.rate !== undefined && order.rate > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.7rem",
+              color: "#757575",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            Rate
+          </span>
+          <span
+            style={{ fontSize: "0.85rem", fontWeight: 700, color: "#424242" }}
+          >
+            ₹{order.rate.toLocaleString()}/brick
+          </span>
+        </div>
+      )}
+
+      {/* Payment */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: "0.4rem",
+          marginTop: "0.25rem",
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "0.75rem",
+            padding: "0.5rem 0.4rem",
+            textAlign: "center",
+            border: "1px solid #c8e6c9",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "0.55rem",
+              color: "#757575",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              margin: "0 0 0.2rem",
+            }}
+          >
+            TOTAL
+          </p>
+          <p
+            style={{
+              fontSize: "0.88rem",
+              fontWeight: 800,
+              color: "#212121",
+              margin: 0,
+            }}
+          >
+            ₹{order.totalAmount.toLocaleString()}
+          </p>
+        </div>
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "0.75rem",
+            padding: "0.5rem 0.4rem",
+            textAlign: "center",
+            border: "1px solid #c8e6c9",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "0.55rem",
+              color: "#757575",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              margin: "0 0 0.2rem",
+            }}
+          >
+            PAID
+          </p>
+          <p
+            style={{
+              fontSize: "0.88rem",
+              fontWeight: 800,
+              color: "#2e7d32",
+              margin: 0,
+            }}
+          >
+            ₹{order.paidAmount.toLocaleString()}
+          </p>
+        </div>
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "0.75rem",
+            padding: "0.5rem 0.4rem",
+            textAlign: "center",
+            border: "1px solid #c8e6c9",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "0.55rem",
+              color: "#757575",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              margin: "0 0 0.2rem",
+            }}
+          >
+            DUE
+          </p>
+          <p
+            style={{
+              fontSize: "0.88rem",
+              fontWeight: 800,
+              color: "#2e7d32",
+              margin: 0,
+            }}
+          >
+            ₹{order.dueAmount.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrderListPage({ onBack, filterClosed }: Props) {
   const [orders, setOrders] = useState<LocalOrder[]>(() => getLocalOrders());
   const [search, setSearch] = useState("");
@@ -614,6 +1134,7 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
   const [expanded, setExpanded] = useState<
     Record<string, "bricks" | "paid" | null>
   >({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const deliveries = getLocalDeliveries();
   const sorted = [...orders].sort((a, b) => b.createdAt - a.createdAt);
@@ -637,13 +1158,22 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
     isOrderClosed(o, deliveries, orders),
   );
 
-  // When filterClosed is true, we only show closed orders
   const displayOrders = filterClosed ? closedOrders : null;
 
-  function handleDelete(id: string) {
-    deleteLocalOrder(id);
+  function requestDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  function confirmDelete() {
+    if (!deleteConfirmId) return;
+    deleteLocalOrder(deleteConfirmId);
     setOrders(getLocalOrders());
+    setDeleteConfirmId(null);
     toast.success("Order deleted");
+  }
+
+  function cancelDelete() {
+    setDeleteConfirmId(null);
   }
 
   function toggleExpanded(orderId: string, tab: "bricks" | "paid") {
@@ -667,6 +1197,14 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
         margin: "0 auto",
       }}
     >
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <DeleteConfirmDialog
+          onCancel={cancelDelete}
+          onConfirm={confirmDelete}
+        />
+      )}
+
       {/* Header */}
       <header
         style={{
@@ -719,6 +1257,7 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
           flexShrink: 0,
         }}
       >
+        {/* Search Bar */}
         <div style={{ position: "relative" }}>
           <Search
             size={16}
@@ -728,6 +1267,7 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
               left: "0.875rem",
               top: "50%",
               transform: "translateY(-50%)",
+              pointerEvents: "none",
             }}
           />
           <input
@@ -738,19 +1278,20 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
             placeholder="Search Customer Name..."
             style={{
               width: "100%",
-              border: "1.5px solid #e8e8e8",
+              border: "none",
               borderRadius: "2rem",
-              padding: "0.65rem 1rem 0.65rem 2.5rem",
+              padding: "0.7rem 1rem 0.7rem 2.5rem",
               fontSize: "0.875rem",
               color: "#424242",
-              backgroundColor: "#f7f7f7",
+              backgroundColor: "#f0f0f0",
               outline: "none",
               boxSizing: "border-box",
             }}
           />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        {/* Date Filters */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
           <div
             style={{
               flex: 1,
@@ -771,30 +1312,46 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
             >
               FROM DATE
             </label>
-            <input
-              id="from-date"
-              data-ocid="order_list.from_date.input"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              style={{
-                border: "1.5px solid #e8e8e8",
-                borderRadius: "0.875rem",
-                padding: "0.55rem 0.75rem",
-                fontSize: "0.8rem",
-                color: "#424242",
-                backgroundColor: "#f7f7f7",
-                outline: "none",
-                width: "100%",
-              }}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                id="from-date"
+                data-ocid="order_list.from_date.input"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                style={{
+                  border: "1.5px solid #e8e8e8",
+                  borderRadius: "0.875rem",
+                  padding: "0.55rem 2rem 0.55rem 0.75rem",
+                  fontSize: "0.8rem",
+                  color: fromDate ? "#424242" : "#bdbdbd",
+                  backgroundColor: "#f7f7f7",
+                  outline: "none",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                }}
+              />
+              <ChevronDown
+                size={14}
+                color="#9e9e9e"
+                style={{
+                  position: "absolute",
+                  right: "0.6rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
           </div>
           <div
             style={{
-              width: "1.5rem",
+              width: "1.25rem",
               height: "1.5px",
               backgroundColor: "#bdbdbd",
-              marginTop: "1.25rem",
+              marginBottom: "0.6rem",
               flexShrink: 0,
             }}
           />
@@ -818,23 +1375,39 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
             >
               TO DATE
             </label>
-            <input
-              id="to-date"
-              data-ocid="order_list.to_date.input"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              style={{
-                border: "1.5px solid #e8e8e8",
-                borderRadius: "0.875rem",
-                padding: "0.55rem 0.75rem",
-                fontSize: "0.8rem",
-                color: "#424242",
-                backgroundColor: "#f7f7f7",
-                outline: "none",
-                width: "100%",
-              }}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                id="to-date"
+                data-ocid="order_list.to_date.input"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                style={{
+                  border: "1.5px solid #e8e8e8",
+                  borderRadius: "0.875rem",
+                  padding: "0.55rem 2rem 0.55rem 0.75rem",
+                  fontSize: "0.8rem",
+                  color: toDate ? "#424242" : "#bdbdbd",
+                  backgroundColor: "#f7f7f7",
+                  outline: "none",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                }}
+              />
+              <ChevronDown
+                size={14}
+                color="#9e9e9e"
+                style={{
+                  position: "absolute",
+                  right: "0.6rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -844,7 +1417,7 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "0.75rem 1rem 1rem",
+          padding: filterClosed ? "1rem" : "0.75rem 1rem 1rem",
           display: "flex",
           flexDirection: "column",
           gap: "0.875rem",
@@ -893,25 +1466,29 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
               </div>
             ) : (
               <>
+                {/* Completed Orders header */}
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "0.5rem",
+                    backgroundColor: "#c8e6c9",
+                    borderRadius: "0.75rem",
+                    padding: "0.6rem 0.875rem",
                   }}
                 >
-                  <CheckCircle2 size={15} color="#2e7d32" />
+                  <CheckCircle2 size={16} color="#2e7d32" />
                   <p
                     style={{
-                      fontSize: "0.65rem",
+                      fontSize: "0.7rem",
                       fontWeight: 800,
-                      color: "#2e7d32",
+                      color: "#1b5e20",
                       textTransform: "uppercase",
-                      letterSpacing: "0.12em",
+                      letterSpacing: "0.1em",
                       margin: 0,
                     }}
                   >
-                    Completed Orders ({displayOrders?.length ?? 0})
+                    COMPLETED ORDERS ({displayOrders?.length ?? 0})
                   </p>
                 </div>
                 {displayOrders?.map((order, index) => (
@@ -921,7 +1498,7 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
                     index={index}
                     expanded={expanded}
                     onToggle={toggleExpanded}
-                    onDelete={handleDelete}
+                    onDelete={requestDelete}
                     closed
                   />
                 ))}
@@ -990,7 +1567,7 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
                     index={index}
                     expanded={expanded}
                     onToggle={toggleExpanded}
-                    onDelete={handleDelete}
+                    onDelete={requestDelete}
                   />
                 ))}
               </>
@@ -1022,14 +1599,11 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
                   </p>
                 </div>
                 {closedOrders.map((order, index) => (
-                  <OrderCard
+                  <ClosedOrderCard
                     key={order.id}
                     order={order}
-                    index={activeOrders.length + index}
-                    expanded={expanded}
-                    onToggle={toggleExpanded}
-                    onDelete={handleDelete}
-                    closed
+                    index={index}
+                    onDelete={requestDelete}
                   />
                 ))}
               </>

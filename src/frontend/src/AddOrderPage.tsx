@@ -146,6 +146,7 @@ export default function AddOrderPage({ onBack }: Props) {
   );
   const [totalAmount, setTotalAmount] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
+  const [rate, setRate] = useState("");
 
   const allOrders = useMemo(() => getLocalOrders(), []);
 
@@ -224,6 +225,7 @@ export default function AddOrderPage({ onBack }: Props) {
       totalAmount: Number(totalAmount) || 0,
       paidAmount: Number(paidAmount) || 0,
       dueAmount,
+      rate: Number(rate) || undefined,
     });
     toast.success("Order saved successfully!");
     onBack();
@@ -615,6 +617,20 @@ export default function AddOrderPage({ onBack }: Props) {
                 type="number"
                 value={totalAmount}
                 onChange={(e) => setTotalAmount(e.target.value)}
+                placeholder="0"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label htmlFor="order-rate" style={labelStyle}>
+                Rate (₹ per brick)
+              </label>
+              <input
+                id="order-rate"
+                data-ocid="add_order.rate.input"
+                type="number"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
                 placeholder="0"
                 style={inputStyle}
               />
