@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import AddOrderPage from "./AddOrderPage";
 import AddPaymentPage from "./AddPaymentPage";
 import AddVehiclePage from "./AddVehiclePage";
+import DeliveryPage from "./DeliveryPage";
 import OrderListPage from "./OrderListPage";
 import { getLocalMetrics } from "./localOrderStore";
 
@@ -22,8 +23,10 @@ type Page =
   | "dashboard"
   | "addOrder"
   | "orderList"
+  | "closedOrders"
   | "addPayment"
-  | "addVehicle";
+  | "addVehicle"
+  | "delivery";
 
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
@@ -126,7 +129,6 @@ function StatCard({
       )}
     </>
   );
-
   if (onClick) {
     return (
       <button
@@ -149,7 +151,6 @@ function StatCard({
       </button>
     );
   }
-
   return (
     <div
       data-ocid={ocid}
@@ -226,7 +227,6 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
           overflow: "hidden",
         }}
       >
-        {/* Header */}
         <header
           className="flex items-center justify-between flex-shrink-0"
           style={{
@@ -279,7 +279,6 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
           </button>
         </header>
 
-        {/* Welcome + Clock */}
         <div
           className="flex-shrink-0"
           style={{
@@ -333,7 +332,6 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
           </div>
         </div>
 
-        {/* Main content */}
         <main
           className="flex flex-col flex-1 overflow-hidden"
           style={{
@@ -392,6 +390,8 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
               value={fmt(metrics?.orderClosed)}
               iconBg="#43a047"
               iconColor="#ffffff"
+              onClick={() => onNavigate("closedOrders")}
+              tappable
             />
             <StatCard
               ocid="stats.item.3"
@@ -465,6 +465,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 />
               }
               label="DELIVERY"
+              onClick={() => onNavigate("delivery")}
             />
             <ActionCard
               ocid="action.add_vehicle.button"
@@ -517,7 +518,6 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
           </div>
         </main>
 
-        {/* Footer */}
         <footer
           className="text-center flex-shrink-0"
           style={{
@@ -556,11 +556,20 @@ export default function App() {
       {page === "orderList" && (
         <OrderListPage onBack={() => setPage("dashboard")} />
       )}
+      {page === "closedOrders" && (
+        <OrderListPage
+          onBack={() => setPage("dashboard")}
+          filterClosed={true}
+        />
+      )}
       {page === "addPayment" && (
         <AddPaymentPage onBack={() => setPage("dashboard")} />
       )}
       {page === "addVehicle" && (
         <AddVehiclePage onBack={() => setPage("dashboard")} />
+      )}
+      {page === "delivery" && (
+        <DeliveryPage onBack={() => setPage("dashboard")} />
       )}
     </>
   );

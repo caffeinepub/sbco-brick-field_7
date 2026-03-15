@@ -94,13 +94,41 @@ export function deleteLocalOrder(id: string): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
 }
 
+/** Check if an order is closed: due=0 and all bricks delivered */
+export function isOrderClosed(
+  order: LocalOrder,
+  allDeliveries: { customerName: string; totalBricks: number }[],
+  allOrders: LocalOrder[],
+): boolean {
+  if (order.dueAmount !== 0) return false;
+  // Sum all bricks ordered for this customer
+  const name = order.customerName.toLowerCase();
+  const totalOrdered = allOrders
+    .filter((o) => o.customerName.toLowerCase() === name)
+    .reduce((s, o) => s + o.totalBricks, 0);
+  // Sum all bricks delivered for this customer
+  const totalDelivered = allDeliveries
+    .filter((d) => d.customerName.toLowerCase() === name)
+    .reduce((s, d) => s + d.totalBricks, 0);
+  return totalDelivered >= totalOrdered && totalOrdered > 0;
+}
+
 export function getLocalMetrics() {
   const orders = getLocalOrders();
+  let deliveries: { customerName: string; totalBricks: number }[] = [];
+  try {
+    deliveries = JSON.parse(localStorage.getItem("sbco_deliveries") || "[]");
+  } catch {
+    deliveries = [];
+  }
+  const closedCount = orders.filter((o) =>
+    isOrderClosed(o, deliveries, orders),
+  ).length;
   return {
     totalOrders: orders.length,
     totalPaidAmount: orders.reduce((s, o) => s + o.paidAmount, 0),
     totalDueAmount: orders.reduce((s, o) => s + o.dueAmount, 0),
     bricksDispatched: orders.reduce((s, o) => s + o.totalBricks, 0),
-    orderClosed: 0,
+    orderClosed: closedCount,
   };
 }

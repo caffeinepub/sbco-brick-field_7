@@ -1,7 +1,8 @@
 import { ArrowLeft, CalendarDays, Check } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { saveLocalOrder } from "./localOrderStore";
+import { getLocalOrders, saveLocalOrder } from "./localOrderStore";
+import type { LocalOrder } from "./localOrderStore";
 
 const BRICK_TYPES = [
   "1 No Bricks",
@@ -135,6 +136,7 @@ function DatePickerField({
 export default function AddOrderPage({ onBack }: Props) {
   const [date, setDate] = useState(todayDate());
   const [customerName, setCustomerName] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -144,6 +146,29 @@ export default function AddOrderPage({ onBack }: Props) {
   );
   const [totalAmount, setTotalAmount] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
+
+  const allOrders = useMemo(() => getLocalOrders(), []);
+
+  // Deduplicate by customerName (latest order per customer), limit to 8
+  const suggestions = useMemo(() => {
+    if (!customerName.trim()) return [];
+    const seen = new Map<string, LocalOrder>();
+    for (const o of allOrders) {
+      const key = o.customerName.toLowerCase();
+      if (key.includes(customerName.toLowerCase())) {
+        if (!seen.has(key)) seen.set(key, o);
+      }
+    }
+    return Array.from(seen.values()).slice(0, 8);
+  }, [customerName, allOrders]);
+
+  function handleSelectSuggestion(order: LocalOrder) {
+    setCustomerName(order.customerName);
+    setAddress(order.address || "");
+    setPhone(order.phone || "");
+    setInvoiceNo(order.invoiceNo || "");
+    setShowDropdown(false);
+  }
 
   const dueAmount = Math.max(
     0,
@@ -312,7 +337,9 @@ export default function AddOrderPage({ onBack }: Props) {
               borderColor="#a5d6a7"
               ocid="add_order.date.input"
             />
-            <div>
+
+            {/* Customer Name with Autocomplete */}
+            <div style={{ position: "relative" }}>
               <label htmlFor="order-customer-name" style={labelStyle}>
                 Customer Name
               </label>
@@ -321,11 +348,71 @@ export default function AddOrderPage({ onBack }: Props) {
                 data-ocid="add_order.customer_name.input"
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => customerName && setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
                 placeholder="Enter customer name"
                 style={inputStyle}
+                autoComplete="off"
               />
+              {showDropdown && suggestions.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "#ffffff",
+                    border: "1.5px solid #a5d6a7",
+                    borderRadius: "0.75rem",
+                    marginTop: "0.25rem",
+                    zIndex: 100,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {suggestions.map((order, idx) => (
+                    <button
+                      key={order.id}
+                      type="button"
+                      data-ocid={`add_order.customer_suggestion.item.${idx + 1}`}
+                      onMouseDown={() => handleSelectSuggestion(order)}
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem 1rem",
+                        textAlign: "left",
+                        border: "none",
+                        backgroundColor: "transparent",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #f0f0f0",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.15rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: "0.9rem",
+                          color: "#2e7d32",
+                        }}
+                      >
+                        {order.customerName}
+                      </span>
+                      {order.phone && (
+                        <span style={{ fontSize: "0.75rem", color: "#9e9e9e" }}>
+                          {order.phone}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div>
               <label htmlFor="order-address" style={labelStyle}>
                 Address
