@@ -16,6 +16,7 @@ import AddOrderPage from "./AddOrderPage";
 import AddPaymentPage from "./AddPaymentPage";
 import AddVehiclePage from "./AddVehiclePage";
 import DeliveryPage from "./DeliveryPage";
+import DueAmountListPage from "./DueAmountListPage";
 import OrderListPage from "./OrderListPage";
 import { getLocalMetrics } from "./localOrderStore";
 
@@ -26,7 +27,8 @@ type Page =
   | "closedOrders"
   | "addPayment"
   | "addVehicle"
-  | "delivery";
+  | "delivery"
+  | "dueAmountList";
 
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
@@ -407,6 +409,8 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
               value={fmt(metrics?.totalDueAmount)}
               iconBg="#1e88e5"
               iconColor="#ffffff"
+              onClick={() => onNavigate("dueAmountList")}
+              tappable
             />
             <StatCard
               ocid="stats.item.4"
@@ -570,6 +574,9 @@ export default function App() {
       )}
       {page === "delivery" && (
         <DeliveryPage onBack={() => setPage("dashboard")} />
+      )}
+      {page === "dueAmountList" && (
+        <DueAmountListPage onBack={() => setPage("dashboard")} />
       )}
     </>
   );

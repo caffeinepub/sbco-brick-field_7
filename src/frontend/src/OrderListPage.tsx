@@ -5,6 +5,7 @@ import {
   ChevronUp,
   Clock,
   Package,
+  Pencil,
   Phone,
   Search,
   Trash2,
@@ -155,14 +156,12 @@ function OrderCard({
   expanded,
   onToggle,
   onDelete,
-  closed,
 }: {
   order: LocalOrder;
   index: number;
   expanded: Record<string, "bricks" | "paid" | null>;
   onToggle: (id: string, tab: "bricks" | "paid") => void;
   onDelete: (id: string) => void;
-  closed?: boolean;
 }) {
   const due = order.dueAmount;
   const paid = order.paidAmount;
@@ -177,102 +176,82 @@ function OrderCard({
       key={order.id}
       data-ocid={`order_list.item.${index + 1}`}
       style={{
-        backgroundColor: closed ? "#f0fdf4" : "#ffffff",
+        backgroundColor: "#f0fdf4",
         borderRadius: "1rem",
         padding: "1rem",
-        boxShadow: closed
-          ? "0 2px 8px rgba(46,125,50,0.1)"
-          : "0 2px 8px rgba(0,0,0,0.06)",
+        boxShadow: "0 2px 12px rgba(46,125,50,0.1)",
+        border: "1.5px solid #a5d6a7",
         display: "flex",
         flexDirection: "column",
         gap: 0,
-        border: closed ? "1.5px solid #a5d6a7" : "none",
       }}
     >
-      {/* Closed badge */}
-      {closed && (
+      {/* ── Row 1: Name + INV badge | Date + Delete ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.5rem",
+          marginBottom: "0.5rem",
+        }}
+      >
+        {/* Left: name + invoice badge */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "0.35rem",
-            marginBottom: "0.5rem",
+            gap: "0.45rem",
+            flex: 1,
+            minWidth: 0,
           }}
         >
-          <CheckCircle2 size={13} color="#2e7d32" />
-          <span
-            style={{
-              fontSize: "0.6rem",
-              fontWeight: 800,
-              color: "#2e7d32",
-              textTransform: "uppercase",
-              letterSpacing: "0.12em",
-              backgroundColor: "#e8f5e9",
-              borderRadius: "2rem",
-              padding: "0.15rem 0.5rem",
-            }}
-          >
-            Order Closed
-          </span>
-        </div>
-      )}
-
-      {/* Top: Name + Date + Actions */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: "0.375rem",
-        }}
-      >
-        <div>
           <p
             style={{
               fontWeight: 800,
-              fontSize: "1.05rem",
+              fontSize: "1rem",
               color: "#2e7d32",
               margin: 0,
               lineHeight: 1.2,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flexShrink: 1,
             }}
           >
             {order.customerName}
           </p>
-          {order.phone && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.35rem",
-                marginTop: "0.3rem",
-              }}
-            >
-              <Phone size={13} color="#616161" />
-              <span
-                style={{
-                  fontSize: "0.8rem",
-                  color: "#616161",
-                  fontWeight: 500,
-                }}
-              >
-                {order.phone}
-              </span>
-            </div>
-          )}
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: "0.62rem",
+              fontWeight: 800,
+              color: "#c62828",
+              backgroundColor: "#fdecea",
+              borderRadius: "2rem",
+              padding: "0.15rem 0.5rem",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {order.invoiceNo ? `INV #${order.invoiceNo}` : "INV #--"}
+          </span>
         </div>
+
+        {/* Right: date + delete */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "0.4rem",
+            flexShrink: 0,
           }}
         >
           <span
             style={{
-              fontSize: "0.75rem",
+              fontSize: "0.72rem",
               color: "#9e9e9e",
               fontWeight: 500,
-              marginRight: "0.25rem",
+              whiteSpace: "nowrap",
             }}
           >
             {order.date}
@@ -285,8 +264,8 @@ function OrderCard({
               backgroundColor: "#fdecea",
               border: "none",
               borderRadius: "50%",
-              width: "2rem",
-              height: "2rem",
+              width: "1.9rem",
+              height: "1.9rem",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -299,50 +278,148 @@ function OrderCard({
         </div>
       </div>
 
+      {/* ── Row 2: Phone | Edit button ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "0.65rem",
+        }}
+      >
+        {/* Phone */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+          <Phone size={13} color="#616161" />
+          <span
+            style={{
+              fontSize: "0.8rem",
+              color: "#616161",
+              fontWeight: 500,
+            }}
+          >
+            {order.phone || "—"}
+          </span>
+        </div>
+
+        {/* Edit button */}
+        <button
+          type="button"
+          data-ocid={`order_list.edit_button.${index + 1}`}
+          onClick={() => toast.info("Edit coming soon")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.25rem",
+            backgroundColor: "transparent",
+            border: "1.5px solid #43a047",
+            borderRadius: "2rem",
+            padding: "0.2rem 0.65rem",
+            color: "#2e7d32",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          <Pencil size={11} color="#2e7d32" />
+          Edit
+        </button>
+      </div>
+
+      {/* ── Divider ── */}
       <div
         style={{
           height: "1px",
-          backgroundColor: "#f0f0f0",
-          margin: "0.5rem 0",
+          backgroundColor: "#c8e6c9",
+          marginBottom: "0.65rem",
         }}
       />
 
-      {/* Brick Items */}
-      {order.bricks.length > 0 && (
+      {/* ── Middle: Brick types | Approx Delivery ── */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "0.75rem",
+          marginBottom: "0.65rem",
+        }}
+      >
+        {/* Left: brick types */}
         <div
           style={{
+            flex: 1,
             display: "flex",
             flexDirection: "column",
             gap: "0.2rem",
-            marginBottom: "0.25rem",
           }}
         >
-          {order.bricks.map((item) => (
-            <p
-              key={item.brickType}
-              style={{
-                fontSize: "0.875rem",
-                color: "#212121",
-                margin: 0,
-                fontWeight: 500,
-              }}
-            >
-              <span style={{ fontWeight: 700 }}>{item.brickType}:</span>{" "}
-              {item.qty.toLocaleString()}
+          {order.bricks.length > 0 ? (
+            order.bricks.map((item) => (
+              <p
+                key={item.brickType}
+                style={{
+                  fontSize: "0.82rem",
+                  color: "#424242",
+                  margin: 0,
+                  fontWeight: 500,
+                }}
+              >
+                <span style={{ fontWeight: 700, color: "#2e7d32" }}>
+                  {item.brickType}:
+                </span>{" "}
+                {item.qty.toLocaleString()}
+              </p>
+            ))
+          ) : (
+            <p style={{ fontSize: "0.82rem", color: "#9e9e9e", margin: 0 }}>
+              —
             </p>
-          ))}
+          )}
         </div>
-      )}
 
+        {/* Right: approx delivery date */}
+        <div
+          style={{
+            flexShrink: 0,
+            textAlign: "right",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.15rem",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.65rem",
+              color: "#9e9e9e",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Approx Delivery Date
+          </span>
+          <span
+            style={{
+              fontSize: "0.82rem",
+              fontWeight: 800,
+              color: order.approxDeliveryDate ? "#2e7d32" : "#bdbdbd",
+            }}
+          >
+            {order.approxDeliveryDate || "—"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Divider ── */}
       <div
         style={{
           height: "1px",
-          backgroundColor: "#f0f0f0",
-          margin: "0.5rem 0",
+          backgroundColor: "#c8e6c9",
+          marginBottom: "0.5rem",
         }}
       />
 
-      {/* 4-option row: Bricks Order | Total | Paid | Due */}
+      {/* ── Bottom: 4-column summary ── */}
       <div
         style={{
           display: "grid",
@@ -372,7 +449,7 @@ function OrderCard({
               fontSize: "0.55rem",
               color: currentExpanded === "bricks" ? "#2e7d32" : "#9e9e9e",
               textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              letterSpacing: "0.04em",
               fontWeight: 700,
               margin: 0,
               lineHeight: 1.2,
@@ -382,7 +459,7 @@ function OrderCard({
           </p>
           <p
             style={{
-              fontSize: "0.95rem",
+              fontSize: "0.92rem",
               fontWeight: 800,
               color: currentExpanded === "bricks" ? "#2e7d32" : "#212121",
               margin: 0,
@@ -397,27 +474,27 @@ function OrderCard({
           )}
         </button>
 
-        <div style={{ backgroundColor: "#e0e0e0", width: "1px" }} />
+        <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
 
         {/* Total */}
         <div style={{ textAlign: "center", padding: "0.25rem 0" }}>
           <p
             style={{
-              fontSize: "0.6rem",
+              fontSize: "0.55rem",
               color: "#9e9e9e",
               textTransform: "uppercase",
-              letterSpacing: "0.07em",
+              letterSpacing: "0.04em",
               fontWeight: 700,
-              margin: "0 0 0.2rem",
+              margin: "0 0 0.15rem",
             }}
           >
             TOTAL
           </p>
           <p
             style={{
-              fontSize: "0.95rem",
+              fontSize: "0.92rem",
               fontWeight: 800,
-              color: "#212121",
+              color: "#424242",
               margin: 0,
             }}
           >
@@ -425,7 +502,7 @@ function OrderCard({
           </p>
         </div>
 
-        <div style={{ backgroundColor: "#e0e0e0", width: "1px" }} />
+        <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
 
         {/* Paid */}
         <button
@@ -446,10 +523,10 @@ function OrderCard({
         >
           <p
             style={{
-              fontSize: "0.6rem",
+              fontSize: "0.55rem",
               color: currentExpanded === "paid" ? "#2e7d32" : "#9e9e9e",
               textTransform: "uppercase",
-              letterSpacing: "0.07em",
+              letterSpacing: "0.04em",
               fontWeight: 700,
               margin: 0,
             }}
@@ -458,7 +535,7 @@ function OrderCard({
           </p>
           <p
             style={{
-              fontSize: "0.95rem",
+              fontSize: "0.92rem",
               fontWeight: 800,
               color: "#2e7d32",
               margin: 0,
@@ -473,25 +550,25 @@ function OrderCard({
           )}
         </button>
 
-        <div style={{ backgroundColor: "#e0e0e0", width: "1px" }} />
+        <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
 
         {/* Due */}
         <div style={{ textAlign: "center", padding: "0.25rem 0" }}>
           <p
             style={{
-              fontSize: "0.6rem",
+              fontSize: "0.55rem",
               color: "#9e9e9e",
               textTransform: "uppercase",
-              letterSpacing: "0.07em",
+              letterSpacing: "0.04em",
               fontWeight: 700,
-              margin: "0 0 0.2rem",
+              margin: "0 0 0.15rem",
             }}
           >
             DUE
           </p>
           <p
             style={{
-              fontSize: "0.95rem",
+              fontSize: "0.92rem",
               fontWeight: 800,
               color: due > 0 ? "#c62828" : "#2e7d32",
               margin: 0,
@@ -507,7 +584,7 @@ function OrderCard({
         <div
           style={{
             marginTop: "0.75rem",
-            borderTop: "1px solid #f0f0f0",
+            borderTop: "1px solid #c8e6c9",
             paddingTop: "0.75rem",
             display: "flex",
             flexDirection: "column",
@@ -624,7 +701,7 @@ function OrderCard({
         <div
           style={{
             marginTop: "0.75rem",
-            borderTop: "1px solid #f0f0f0",
+            borderTop: "1px solid #c8e6c9",
             paddingTop: "0.75rem",
             display: "flex",
             flexDirection: "column",
@@ -726,8 +803,6 @@ function ClosedOrderCard({
   index: number;
   onDelete: (id: string) => void;
 }) {
-  const totalBricksInOrder = order.bricks.reduce((sum, b) => sum + b.qty, 0);
-
   return (
     <div
       data-ocid={`closed_orders.item.${index + 1}`}
@@ -739,386 +814,194 @@ function ClosedOrderCard({
         border: "1.5px solid #a5d6a7",
         display: "flex",
         flexDirection: "column",
-        gap: "0.5rem",
+        gap: 0,
       }}
     >
-      {/* Header: Closed badge + delete */}
+      {/* Top row: left info + right (date + delete) */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
+          gap: "0.5rem",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-          <CheckCircle2 size={13} color="#2e7d32" />
+        {/* Left column */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.3rem",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {/* Badge */}
           <span
             style={{
+              display: "inline-block",
+              alignSelf: "flex-start",
               fontSize: "0.6rem",
               fontWeight: 800,
               color: "#2e7d32",
               textTransform: "uppercase",
-              letterSpacing: "0.12em",
+              letterSpacing: "0.1em",
               backgroundColor: "#e8f5e9",
               borderRadius: "2rem",
-              padding: "0.15rem 0.5rem",
-            }}
-          >
-            Order Closed
-          </span>
-        </div>
-        <button
-          type="button"
-          data-ocid={`closed_orders.delete_button.${index + 1}`}
-          onClick={() => onDelete(order.id)}
-          style={{
-            backgroundColor: "#fdecea",
-            border: "none",
-            borderRadius: "50%",
-            width: "2rem",
-            height: "2rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <Trash2 size={13} color="#c62828" />
-        </button>
-      </div>
-
-      <div style={{ height: "1px", backgroundColor: "#c8e6c9" }} />
-
-      {/* Date */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "0.7rem",
-            color: "#757575",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Date
-        </span>
-        <span
-          style={{ fontSize: "0.85rem", fontWeight: 700, color: "#212121" }}
-        >
-          {order.date}
-        </span>
-      </div>
-
-      {/* Name */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "0.7rem",
-            color: "#757575",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Name
-        </span>
-        <span
-          style={{ fontSize: "0.95rem", fontWeight: 800, color: "#2e7d32" }}
-        >
-          {order.customerName}
-        </span>
-      </div>
-
-      {/* Phone */}
-      {order.phone && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "0.7rem",
-              color: "#757575",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            Phone
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-            <Phone size={13} color="#616161" />
-            <span
-              style={{ fontSize: "0.85rem", fontWeight: 600, color: "#424242" }}
-            >
-              {order.phone}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Address */}
-      {order.address && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: "0.5rem",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "0.7rem",
-              color: "#757575",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Address
-          </span>
-          <span
-            style={{
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              color: "#424242",
-              textAlign: "right",
-            }}
-          >
-            {order.address}
-          </span>
-        </div>
-      )}
-
-      <div style={{ height: "1px", backgroundColor: "#c8e6c9" }} />
-
-      {/* Bricks Type & Quantity */}
-      <div>
-        <span
-          style={{
-            fontSize: "0.7rem",
-            color: "#757575",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Bricks
-        </span>
-        <div
-          style={{
-            marginTop: "0.35rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.2rem",
-          }}
-        >
-          {order.bricks.map((b) => (
-            <div
-              key={b.brickType}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                backgroundColor: "#e8f5e9",
-                borderRadius: "0.5rem",
-                padding: "0.3rem 0.6rem",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "#2e7d32",
-                }}
-              >
-                {b.brickType}
-              </span>
-              <span
-                style={{
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "#1b5e20",
-                }}
-              >
-                {b.qty.toLocaleString()}
-              </span>
-            </div>
-          ))}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
               padding: "0.2rem 0.6rem",
             }}
           >
-            <span
+            ORDER CLOSED
+          </span>
+          {/* Customer name */}
+          <p
+            style={{
+              fontWeight: 800,
+              fontSize: "1rem",
+              color: "#1a1a1a",
+              margin: 0,
+              lineHeight: 1.25,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {order.customerName}
+          </p>
+          {/* Phone */}
+          {order.phone && (
+            <div
               style={{
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                color: "#388e3c",
-                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
               }}
             >
-              Total
-            </span>
-            <span
-              style={{ fontSize: "0.9rem", fontWeight: 800, color: "#1b5e20" }}
-            >
-              {totalBricksInOrder.toLocaleString()}
-            </span>
-          </div>
+              <Phone size={13} color="#9e9e9e" />
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#757575",
+                  fontWeight: 500,
+                }}
+              >
+                {order.phone}
+              </span>
+            </div>
+          )}
         </div>
-      </div>
 
-      <div style={{ height: "1px", backgroundColor: "#c8e6c9" }} />
-
-      {/* Rate */}
-      {order.rate !== undefined && order.rate > 0 && (
+        {/* Right column: date + delete */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "0.4rem",
+            flexShrink: 0,
           }}
         >
           <span
             style={{
-              fontSize: "0.7rem",
+              fontSize: "0.78rem",
               color: "#757575",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              fontWeight: 500,
+              whiteSpace: "nowrap",
             }}
           >
-            Rate
+            {order.date}
           </span>
-          <span
-            style={{ fontSize: "0.85rem", fontWeight: 700, color: "#424242" }}
+          <button
+            type="button"
+            data-ocid={`closed_orders.delete_button.${index + 1}`}
+            onClick={() => onDelete(order.id)}
+            style={{
+              backgroundColor: "#fdecea",
+              border: "none",
+              borderRadius: "50%",
+              width: "2rem",
+              height: "2rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
           >
-            ₹{order.rate.toLocaleString()}/brick
-          </span>
+            <Trash2 size={13} color="#c62828" />
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* Payment */}
+      {/* Divider */}
+      <div
+        style={{
+          height: "1px",
+          backgroundColor: "#c8e6c9",
+          margin: "0.75rem 0",
+        }}
+      />
+
+      {/* Two-column: bricks list + payment summary */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: "0.4rem",
-          marginTop: "0.25rem",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "0.5rem",
+          alignItems: "start",
         }}
       >
+        {/* Left: brick types */}
         <div
           style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "0.75rem",
-            padding: "0.5rem 0.4rem",
-            textAlign: "center",
-            border: "1px solid #c8e6c9",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.25rem",
           }}
         >
-          <p
-            style={{
-              fontSize: "0.55rem",
-              color: "#757575",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              margin: "0 0 0.2rem",
-            }}
-          >
-            TOTAL
-          </p>
-          <p
-            style={{
-              fontSize: "0.88rem",
-              fontWeight: 800,
-              color: "#212121",
-              margin: 0,
-            }}
-          >
-            ₹{order.totalAmount.toLocaleString()}
-          </p>
+          {order.bricks.map((b) => (
+            <p
+              key={b.brickType}
+              style={{
+                margin: 0,
+                fontSize: "0.85rem",
+                fontWeight: 500,
+                color: "#424242",
+              }}
+            >
+              {b.brickType}: {b.qty.toLocaleString()}
+            </p>
+          ))}
         </div>
+
+        {/* Right: total + paid */}
         <div
           style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "0.75rem",
-            padding: "0.5rem 0.4rem",
-            textAlign: "center",
-            border: "1px solid #c8e6c9",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.2rem",
+            textAlign: "right",
           }}
         >
           <p
             style={{
-              fontSize: "0.55rem",
-              color: "#757575",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              margin: "0 0 0.2rem",
+              margin: 0,
+              fontSize: "0.9rem",
+              fontWeight: 800,
+              color: "#1a1a1a",
             }}
           >
-            PAID
+            Total ₹{order.totalAmount.toLocaleString()}
           </p>
           <p
             style={{
-              fontSize: "0.88rem",
+              margin: 0,
+              fontSize: "0.9rem",
               fontWeight: 800,
               color: "#2e7d32",
-              margin: 0,
             }}
           >
-            ₹{order.paidAmount.toLocaleString()}
-          </p>
-        </div>
-        <div
-          style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "0.75rem",
-            padding: "0.5rem 0.4rem",
-            textAlign: "center",
-            border: "1px solid #c8e6c9",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "0.55rem",
-              color: "#757575",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              margin: "0 0 0.2rem",
-            }}
-          >
-            DUE
-          </p>
-          <p
-            style={{
-              fontSize: "0.88rem",
-              fontWeight: 800,
-              color: "#2e7d32",
-              margin: 0,
-            }}
-          >
-            ₹{order.dueAmount.toLocaleString()}
+            Paid ₹{order.paidAmount.toLocaleString()}
           </p>
         </div>
       </div>
@@ -1466,40 +1349,38 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
               </div>
             ) : (
               <>
-                {/* Completed Orders header */}
+                {/* Completed Orders header — clean white pill */}
                 <div
                   style={{
-                    display: "flex",
+                    display: "inline-flex",
+                    alignSelf: "flex-start",
                     alignItems: "center",
-                    gap: "0.5rem",
-                    backgroundColor: "#c8e6c9",
-                    borderRadius: "0.75rem",
-                    padding: "0.6rem 0.875rem",
+                    gap: "0.4rem",
+                    backgroundColor: "#ffffff",
+                    borderRadius: "2rem",
+                    padding: "0.4rem 0.875rem",
+                    border: "1.5px solid #a5d6a7",
                   }}
                 >
-                  <CheckCircle2 size={16} color="#2e7d32" />
-                  <p
+                  <CheckCircle2 size={14} color="#2e7d32" />
+                  <span
                     style={{
-                      fontSize: "0.7rem",
+                      fontSize: "0.72rem",
                       fontWeight: 800,
-                      color: "#1b5e20",
+                      color: "#2e7d32",
                       textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                      margin: 0,
+                      letterSpacing: "0.08em",
                     }}
                   >
-                    COMPLETED ORDERS ({displayOrders?.length ?? 0})
-                  </p>
+                    Completed Orders ({displayOrders?.length ?? 0})
+                  </span>
                 </div>
                 {displayOrders?.map((order, index) => (
-                  <OrderCard
+                  <ClosedOrderCard
                     key={order.id}
                     order={order}
                     index={index}
-                    expanded={expanded}
-                    onToggle={toggleExpanded}
                     onDelete={requestDelete}
-                    closed
                   />
                 ))}
               </>
