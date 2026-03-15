@@ -13,10 +13,17 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import AddOrderPage from "./AddOrderPage";
+import AddPaymentPage from "./AddPaymentPage";
+import AddVehiclePage from "./AddVehiclePage";
 import OrderListPage from "./OrderListPage";
-import { useMetrics } from "./hooks/useQueries";
+import { getLocalMetrics } from "./localOrderStore";
 
-type Page = "dashboard" | "addOrder" | "orderList";
+type Page =
+  | "dashboard"
+  | "addOrder"
+  | "orderList"
+  | "addPayment"
+  | "addVehicle";
 
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
@@ -195,8 +202,8 @@ function ActionCard({
 
 function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   const now = useLiveClock();
-  const { data: metrics, isLoading } = useMetrics();
-  const fmt = (v: bigint | undefined) => (v !== undefined ? v.toString() : "0");
+  const metrics = getLocalMetrics();
+  const fmt = (v: number | undefined) => (v !== undefined ? v.toString() : "0");
 
   return (
     <div
@@ -350,85 +357,73 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
             Dashboard Overview
           </p>
 
-          {isLoading ? (
-            <div
-              className="grid grid-cols-2 flex-1"
-              style={{ gap: "clamp(0.35rem, 1.2vw, 0.65rem)" }}
-              data-ocid="stats.loading_state"
-            >
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="rounded-2xl" />
-              ))}
-            </div>
-          ) : (
-            <div
-              className="grid grid-cols-2 flex-1"
-              style={{ gap: "clamp(0.35rem, 1.2vw, 0.65rem)" }}
-            >
-              <StatCard
-                ocid="stats.total_orders.button"
-                icon={
-                  <Package
-                    style={{
-                      width: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                      height: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                    }}
-                  />
-                }
-                label="TOTAL BRICKS ORDER"
-                value={fmt(metrics?.totalOrders)}
-                iconBg="#ff9800"
-                iconColor="#ffffff"
-                onClick={() => onNavigate("orderList")}
-                tappable
-              />
-              <StatCard
-                ocid="stats.item.2"
-                icon={
-                  <CheckCircle2
-                    style={{
-                      width: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                      height: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                    }}
-                  />
-                }
-                label="ORDER CLOSED"
-                value={fmt(metrics?.orderClosed)}
-                iconBg="#43a047"
-                iconColor="#ffffff"
-              />
-              <StatCard
-                ocid="stats.item.3"
-                icon={
-                  <Layers
-                    style={{
-                      width: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                      height: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                    }}
-                  />
-                }
-                label="TOTAL DUE AMOUNT"
-                value={fmt(metrics?.totalDueAmount)}
-                iconBg="#1e88e5"
-                iconColor="#ffffff"
-              />
-              <StatCard
-                ocid="stats.item.4"
-                icon={
-                  <IndianRupee
-                    style={{
-                      width: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                      height: "clamp(0.9rem, 2.8vw, 1.375rem)",
-                    }}
-                  />
-                }
-                label="TOTAL PAID AMOUNT"
-                value={fmt(metrics?.totalPaidAmount)}
-                iconBg="#1b5e20"
-                iconColor="#ffffff"
-              />
-            </div>
-          )}
+          <div
+            className="grid grid-cols-2 flex-1"
+            style={{ gap: "clamp(0.35rem, 1.2vw, 0.65rem)" }}
+          >
+            <StatCard
+              ocid="stats.total_orders.button"
+              icon={
+                <Package
+                  style={{
+                    width: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                    height: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                  }}
+                />
+              }
+              label="TOTAL BRICKS ORDER"
+              value={fmt(metrics?.totalOrders)}
+              iconBg="#ff9800"
+              iconColor="#ffffff"
+              onClick={() => onNavigate("orderList")}
+              tappable
+            />
+            <StatCard
+              ocid="stats.item.2"
+              icon={
+                <CheckCircle2
+                  style={{
+                    width: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                    height: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                  }}
+                />
+              }
+              label="ORDER CLOSED"
+              value={fmt(metrics?.orderClosed)}
+              iconBg="#43a047"
+              iconColor="#ffffff"
+            />
+            <StatCard
+              ocid="stats.item.3"
+              icon={
+                <Layers
+                  style={{
+                    width: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                    height: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                  }}
+                />
+              }
+              label="TOTAL DUE AMOUNT"
+              value={fmt(metrics?.totalDueAmount)}
+              iconBg="#1e88e5"
+              iconColor="#ffffff"
+            />
+            <StatCard
+              ocid="stats.item.4"
+              icon={
+                <IndianRupee
+                  style={{
+                    width: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                    height: "clamp(0.9rem, 2.8vw, 1.375rem)",
+                  }}
+                />
+              }
+              label="TOTAL PAID AMOUNT"
+              value={fmt(metrics?.totalPaidAmount)}
+              iconBg="#1b5e20"
+              iconColor="#ffffff"
+            />
+          </div>
 
           <p
             className="font-bold tracking-widest uppercase flex-shrink-0"
@@ -493,6 +488,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 </span>
               }
               label="ADD VEHICLE"
+              onClick={() => onNavigate("addVehicle")}
             />
             <ActionCard
               ocid="action.add_payment.button"
@@ -516,6 +512,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 </span>
               }
               label="ADD PAYMENT"
+              onClick={() => onNavigate("addPayment")}
             />
           </div>
         </main>
@@ -558,6 +555,12 @@ export default function App() {
       )}
       {page === "orderList" && (
         <OrderListPage onBack={() => setPage("dashboard")} />
+      )}
+      {page === "addPayment" && (
+        <AddPaymentPage onBack={() => setPage("dashboard")} />
+      )}
+      {page === "addVehicle" && (
+        <AddVehiclePage onBack={() => setPage("dashboard")} />
       )}
     </>
   );
