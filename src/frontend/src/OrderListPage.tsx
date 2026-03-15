@@ -2,13 +2,14 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
-  ChevronUp,
   Clock,
+  History,
   Package,
   Pencil,
   Phone,
   Search,
   Trash2,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -32,11 +33,6 @@ function parseDateForFilter(dateStr: string): string {
     return `${yyyy}-${mm}-${dd}`;
   }
   return dateStr;
-}
-
-function getOrderTime(order: LocalOrder): string {
-  const d = new Date(order.createdAt);
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 // Confirmation Dialog Component
@@ -150,25 +146,363 @@ function DeleteConfirmDialog({
   );
 }
 
+// Delivery History Modal
+function DeliveryHistoryModal({
+  orderId,
+  orders,
+  onClose,
+}: {
+  orderId: string;
+  orders: LocalOrder[];
+  onClose: () => void;
+}) {
+  const deliveries = getLocalDeliveries();
+  const order = orders.find((o) => o.id === orderId);
+  const orderDeliveries = deliveries.filter(
+    (d) => d.customerName === order?.customerName,
+  );
+
+  // Flatten: one row per brick type per delivery
+  const rows: {
+    date: string;
+    brickType: string;
+    qty: number;
+    vehicleNumber: string;
+  }[] = [];
+  for (const d of orderDeliveries) {
+    for (const b of d.bricks) {
+      rows.push({
+        date: d.date,
+        brickType: b.brickType,
+        qty: b.qty,
+        vehicleNumber: d.vehicleNumber || "—",
+      });
+    }
+  }
+
+  return (
+    <div
+      data-ocid="order_list.history.modal"
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        zIndex: 1100,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+      role="presentation"
+      tabIndex={-1}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "1.5rem 1.5rem 0 0",
+          width: "100%",
+          maxWidth: "430px",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 -8px 40px rgba(0,0,0,0.2)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            padding: "1.25rem 1rem 0.75rem",
+            borderBottom: "1px solid #e8f5e9",
+            flexShrink: 0,
+          }}
+        >
+          {/* Drag handle */}
+          <div
+            style={{
+              width: "3rem",
+              height: "4px",
+              backgroundColor: "#c8e6c9",
+              borderRadius: "2px",
+              margin: "0 auto 1rem",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <div
+                style={{
+                  backgroundColor: "#e8f5e9",
+                  borderRadius: "50%",
+                  width: "2.25rem",
+                  height: "2.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <History size={16} color="#2e7d32" />
+              </div>
+              <div>
+                <h3
+                  style={{
+                    fontWeight: 800,
+                    fontSize: "1rem",
+                    color: "#1b5e20",
+                    margin: 0,
+                  }}
+                >
+                  Delivery History
+                </h3>
+                {order && (
+                  <p
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#2e7d32",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {order.customerName}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              data-ocid="order_list.history.close_button"
+              onClick={onClose}
+              style={{
+                backgroundColor: "#f5f5f5",
+                border: "none",
+                borderRadius: "50%",
+                width: "2.25rem",
+                height: "2.25rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <X size={16} color="#424242" />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Body */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "0.75rem 1rem 1.5rem",
+          }}
+        >
+          {rows.length === 0 ? (
+            <div
+              data-ocid="order_list.history.empty_state"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "2.5rem 1rem",
+                gap: "0.75rem",
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: "#e8f5e9",
+                  borderRadius: "50%",
+                  width: "3.5rem",
+                  height: "3.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <History size={22} color="#2e7d32" />
+              </div>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  color: "#9e9e9e",
+                  fontWeight: 600,
+                  textAlign: "center",
+                  margin: 0,
+                }}
+              >
+                No delivery history yet
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Table Header */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1.8fr 1.8fr 1fr 1.6fr",
+                  gap: "0.25rem",
+                  padding: "0.5rem 0.75rem",
+                  backgroundColor: "#e8f5e9",
+                  borderRadius: "0.75rem",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {["Date", "Bricks Type", "Qty", "Vehicle No."].map((h) => (
+                  <span
+                    key={h}
+                    style={{
+                      fontSize: "0.6rem",
+                      fontWeight: 800,
+                      color: "#2e7d32",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+
+              {/* Table Rows */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.4rem",
+                }}
+              >
+                {rows.map((row, i) => (
+                  <div
+                    key={`${row.date}-${row.brickType}-${i}`}
+                    data-ocid={`order_list.history.item.${i + 1}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.8fr 1.8fr 1fr 1.6fr",
+                      gap: "0.25rem",
+                      padding: "0.65rem 0.75rem",
+                      backgroundColor: i % 2 === 0 ? "#f9fafb" : "#ffffff",
+                      borderRadius: "0.75rem",
+                      border: "1px solid #e8f5e9",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.3rem",
+                      }}
+                    >
+                      <Clock size={11} color="#9e9e9e" />
+                      <span
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          color: "#424242",
+                        }}
+                      >
+                        {row.date}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        color: "#2e7d32",
+                      }}
+                    >
+                      {row.brickType}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 800,
+                        color: "#1b5e20",
+                      }}
+                    >
+                      {row.qty.toLocaleString()}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        color: "#616161",
+                        wordBreak: "break-all",
+                      }}
+                    >
+                      {row.vehicleNumber}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Summary */}
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  padding: "0.65rem 0.875rem",
+                  backgroundColor: "#e8f5e9",
+                  borderRadius: "0.75rem",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "#2e7d32",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Total Delivered
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.95rem",
+                    fontWeight: 800,
+                    color: "#1b5e20",
+                  }}
+                >
+                  {rows.reduce((s, r) => s + r.qty, 0).toLocaleString()}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrderCard({
   order,
   index,
-  expanded,
-  onToggle,
   onDelete,
+  onHistory,
 }: {
   order: LocalOrder;
   index: number;
-  expanded: Record<string, "bricks" | "paid" | null>;
-  onToggle: (id: string, tab: "bricks" | "paid") => void;
   onDelete: (id: string) => void;
+  onHistory: (id: string) => void;
 }) {
   const due = order.dueAmount;
   const paid = order.paidAmount;
   const total = order.totalAmount;
-  const currentExpanded = expanded[order.id] || null;
-  const paymentHistory = order.paymentHistory || [];
-  const orderTime = getOrderTime(order);
   const totalBricksInOrder = order.bricks.reduce((sum, b) => sum + b.qty, 0);
 
   return (
@@ -196,7 +530,6 @@ function OrderCard({
           marginBottom: "0.5rem",
         }}
       >
-        {/* Left: name + invoice badge */}
         <div
           style={{
             display: "flex",
@@ -237,7 +570,6 @@ function OrderCard({
           </span>
         </div>
 
-        {/* Right: date + delete */}
         <div
           style={{
             display: "flex",
@@ -287,7 +619,6 @@ function OrderCard({
           marginBottom: "0.65rem",
         }}
       >
-        {/* Phone */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
           <Phone size={13} color="#616161" />
           <span
@@ -301,7 +632,6 @@ function OrderCard({
           </span>
         </div>
 
-        {/* Edit button */}
         <button
           type="button"
           data-ocid={`order_list.edit_button.${index + 1}`}
@@ -344,7 +674,6 @@ function OrderCard({
           marginBottom: "0.65rem",
         }}
       >
-        {/* Left: brick types */}
         <div
           style={{
             flex: 1,
@@ -377,7 +706,6 @@ function OrderCard({
           )}
         </div>
 
-        {/* Right: approx delivery date */}
         <div
           style={{
             flexShrink: 0,
@@ -419,23 +747,17 @@ function OrderCard({
         }}
       />
 
-      {/* ── Bottom: 4-column summary ── */}
+      {/* ── Bottom: 5-column summary ── */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1px 1fr 1px 1fr 1px 1fr",
+          gridTemplateColumns: "1fr 1px 1fr 1px 1fr 1px 1fr 1px 1fr",
           alignItems: "stretch",
         }}
       >
-        {/* Bricks Order */}
-        <button
-          type="button"
-          data-ocid={`order_list.bricks_order_tab.${index + 1}`}
-          onClick={() => onToggle(order.id, "bricks")}
+        {/* Bricks Order — plain display, NOT clickable */}
+        <div
           style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
             textAlign: "center",
             padding: "0.25rem 0",
             display: "flex",
@@ -446,8 +768,8 @@ function OrderCard({
         >
           <p
             style={{
-              fontSize: "0.55rem",
-              color: currentExpanded === "bricks" ? "#2e7d32" : "#9e9e9e",
+              fontSize: "0.5rem",
+              color: "#9e9e9e",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
               fontWeight: 700,
@@ -459,28 +781,32 @@ function OrderCard({
           </p>
           <p
             style={{
-              fontSize: "0.92rem",
+              fontSize: "0.88rem",
               fontWeight: 800,
-              color: currentExpanded === "bricks" ? "#2e7d32" : "#212121",
+              color: "#212121",
               margin: 0,
             }}
           >
             {totalBricksInOrder.toLocaleString()}
           </p>
-          {currentExpanded === "bricks" ? (
-            <ChevronUp size={12} color="#2e7d32" />
-          ) : (
-            <ChevronDown size={12} color="#9e9e9e" />
-          )}
-        </button>
+        </div>
 
         <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
 
         {/* Total */}
-        <div style={{ textAlign: "center", padding: "0.25rem 0" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "0.25rem 0",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.1rem",
+          }}
+        >
           <p
             style={{
-              fontSize: "0.55rem",
+              fontSize: "0.5rem",
               color: "#9e9e9e",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
@@ -492,7 +818,7 @@ function OrderCard({
           </p>
           <p
             style={{
-              fontSize: "0.92rem",
+              fontSize: "0.88rem",
               fontWeight: 800,
               color: "#424242",
               margin: 0,
@@ -504,15 +830,9 @@ function OrderCard({
 
         <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
 
-        {/* Paid */}
-        <button
-          type="button"
-          data-ocid={`order_list.paid_tab.${index + 1}`}
-          onClick={() => onToggle(order.id, "paid")}
+        {/* Paid — plain display, NOT clickable */}
+        <div
           style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
             textAlign: "center",
             padding: "0.25rem 0",
             display: "flex",
@@ -523,8 +843,8 @@ function OrderCard({
         >
           <p
             style={{
-              fontSize: "0.55rem",
-              color: currentExpanded === "paid" ? "#2e7d32" : "#9e9e9e",
+              fontSize: "0.5rem",
+              color: "#9e9e9e",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
               fontWeight: 700,
@@ -535,7 +855,7 @@ function OrderCard({
           </p>
           <p
             style={{
-              fontSize: "0.92rem",
+              fontSize: "0.88rem",
               fontWeight: 800,
               color: "#2e7d32",
               margin: 0,
@@ -543,20 +863,24 @@ function OrderCard({
           >
             ₹{paid.toLocaleString()}
           </p>
-          {currentExpanded === "paid" ? (
-            <ChevronUp size={12} color="#2e7d32" />
-          ) : (
-            <ChevronDown size={12} color="#9e9e9e" />
-          )}
-        </button>
+        </div>
 
         <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
 
         {/* Due */}
-        <div style={{ textAlign: "center", padding: "0.25rem 0" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "0.25rem 0",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.1rem",
+          }}
+        >
           <p
             style={{
-              fontSize: "0.55rem",
+              fontSize: "0.5rem",
               color: "#9e9e9e",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
@@ -568,7 +892,7 @@ function OrderCard({
           </p>
           <p
             style={{
-              fontSize: "0.92rem",
+              fontSize: "0.88rem",
               fontWeight: 800,
               color: due > 0 ? "#c62828" : "#2e7d32",
               margin: 0,
@@ -577,219 +901,54 @@ function OrderCard({
             ₹{due.toLocaleString()}
           </p>
         </div>
+
+        <div style={{ backgroundColor: "#c8e6c9", width: "1px" }} />
+
+        {/* History — clickable button */}
+        <button
+          type="button"
+          data-ocid={`order_list.history.button.${index + 1}`}
+          onClick={() => onHistory(order.id)}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            textAlign: "center",
+            padding: "0.25rem 0",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.15rem",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "0.5rem",
+              color: "#1565c0",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              fontWeight: 700,
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            HISTORY
+          </p>
+          <div
+            style={{
+              backgroundColor: "#e3f2fd",
+              borderRadius: "50%",
+              width: "1.6rem",
+              height: "1.6rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <History size={12} color="#1565c0" />
+          </div>
+        </button>
       </div>
-
-      {/* Expanded: Bricks Order History */}
-      {currentExpanded === "bricks" && (
-        <div
-          style={{
-            marginTop: "0.75rem",
-            borderTop: "1px solid #c8e6c9",
-            paddingTop: "0.75rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "0.65rem",
-              fontWeight: 800,
-              color: "#2e7d32",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              margin: 0,
-            }}
-          >
-            Bricks Order History
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              backgroundColor: "#e8f5e9",
-              borderRadius: "0.75rem",
-              padding: "0.65rem 0.875rem",
-              marginBottom: "0.5rem",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "#2e7d32",
-                textTransform: "uppercase",
-              }}
-            >
-              Total Bricks
-            </span>
-            <span
-              style={{
-                fontSize: "1rem",
-                fontWeight: 800,
-                color: "#1b5e20",
-              }}
-            >
-              {totalBricksInOrder.toLocaleString()}
-            </span>
-          </div>
-
-          <div
-            data-ocid={`order_list.bricks_history.item.${index + 1}`}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              backgroundColor: "#f1f8e9",
-              borderRadius: "0.75rem",
-              padding: "0.65rem 0.875rem",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <Clock size={14} color="#2e7d32" />
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#424242",
-                  }}
-                >
-                  {order.date}
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.7rem",
-                    color: "#9e9e9e",
-                  }}
-                >
-                  {orderTime}
-                </p>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              {order.bricks.map((item) => (
-                <p
-                  key={item.brickType}
-                  style={{
-                    margin: 0,
-                    fontSize: "0.8rem",
-                    fontWeight: 700,
-                    color: "#1b5e20",
-                  }}
-                >
-                  {item.brickType}: {item.qty.toLocaleString()}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Expanded: Payment History */}
-      {currentExpanded === "paid" && (
-        <div
-          style={{
-            marginTop: "0.75rem",
-            borderTop: "1px solid #c8e6c9",
-            paddingTop: "0.75rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "0.65rem",
-              fontWeight: 800,
-              color: "#2e7d32",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              margin: 0,
-            }}
-          >
-            Payment History
-          </p>
-          {paymentHistory.length === 0 ? (
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: "#9e9e9e",
-                margin: 0,
-                textAlign: "center",
-                padding: "0.5rem",
-              }}
-            >
-              No payment history
-            </p>
-          ) : (
-            paymentHistory.map((rec, i) => (
-              <div
-                key={`${rec.date}-${rec.time}-${i}`}
-                data-ocid={`order_list.payment_history.item.${i + 1}`}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  backgroundColor: "#f1f8e9",
-                  borderRadius: "0.75rem",
-                  padding: "0.65rem 0.875rem",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <Clock size={14} color="#2e7d32" />
-                  <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                        color: "#424242",
-                      }}
-                    >
-                      {rec.date}
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "0.7rem",
-                        color: "#9e9e9e",
-                      }}
-                    >
-                      {rec.time}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  style={{
-                    fontWeight: 800,
-                    fontSize: "0.95rem",
-                    color: "#2e7d32",
-                  }}
-                >
-                  +₹{rec.amount.toLocaleString()}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -817,7 +976,7 @@ function ClosedOrderCard({
         gap: 0,
       }}
     >
-      {/* Top row: left info + right (date + delete) */}
+      {/* Top row */}
       <div
         style={{
           display: "flex",
@@ -826,7 +985,6 @@ function ClosedOrderCard({
           gap: "0.5rem",
         }}
       >
-        {/* Left column */}
         <div
           style={{
             display: "flex",
@@ -836,7 +994,6 @@ function ClosedOrderCard({
             minWidth: 0,
           }}
         >
-          {/* Badge */}
           <span
             style={{
               display: "inline-block",
@@ -853,7 +1010,6 @@ function ClosedOrderCard({
           >
             ORDER CLOSED
           </span>
-          {/* Customer name */}
           <p
             style={{
               fontWeight: 800,
@@ -868,7 +1024,6 @@ function ClosedOrderCard({
           >
             {order.customerName}
           </p>
-          {/* Phone */}
           {order.phone && (
             <div
               style={{
@@ -891,7 +1046,6 @@ function ClosedOrderCard({
           )}
         </div>
 
-        {/* Right column: date + delete */}
         <div
           style={{
             display: "flex",
@@ -933,7 +1087,6 @@ function ClosedOrderCard({
         </div>
       </div>
 
-      {/* Divider */}
       <div
         style={{
           height: "1px",
@@ -942,7 +1095,6 @@ function ClosedOrderCard({
         }}
       />
 
-      {/* Two-column: bricks list + payment summary */}
       <div
         style={{
           display: "grid",
@@ -951,7 +1103,6 @@ function ClosedOrderCard({
           alignItems: "start",
         }}
       >
-        {/* Left: brick types */}
         <div
           style={{
             display: "flex",
@@ -974,7 +1125,6 @@ function ClosedOrderCard({
           ))}
         </div>
 
-        {/* Right: total + paid */}
         <div
           style={{
             display: "flex",
@@ -1014,10 +1164,8 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [expanded, setExpanded] = useState<
-    Record<string, "bricks" | "paid" | null>
-  >({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [historyOrderId, setHistoryOrderId] = useState<string | null>(null);
 
   const deliveries = getLocalDeliveries();
   const sorted = [...orders].sort((a, b) => b.createdAt - a.createdAt);
@@ -1059,13 +1207,6 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
     setDeleteConfirmId(null);
   }
 
-  function toggleExpanded(orderId: string, tab: "bricks" | "paid") {
-    setExpanded((prev) => ({
-      ...prev,
-      [orderId]: prev[orderId] === tab ? null : tab,
-    }));
-  }
-
   const pageTitle = filterClosed ? "Order Closed" : "Order Details";
 
   return (
@@ -1085,6 +1226,15 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
         <DeleteConfirmDialog
           onCancel={cancelDelete}
           onConfirm={confirmDelete}
+        />
+      )}
+
+      {/* Delivery History Modal */}
+      {historyOrderId && (
+        <DeliveryHistoryModal
+          orderId={historyOrderId}
+          orders={orders}
+          onClose={() => setHistoryOrderId(null)}
         />
       )}
 
@@ -1140,7 +1290,6 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
           flexShrink: 0,
         }}
       >
-        {/* Search Bar */}
         <div style={{ position: "relative" }}>
           <Search
             size={16}
@@ -1173,7 +1322,6 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
           />
         </div>
 
-        {/* Date Filters */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
           <div
             style={{
@@ -1308,7 +1456,6 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
           borderRadius: "1.25rem 1.25rem 0 0",
         }}
       >
-        {/* filterClosed mode: only show closed orders */}
         {filterClosed ? (
           <>
             {displayOrders && displayOrders.length === 0 ? (
@@ -1349,7 +1496,6 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
               </div>
             ) : (
               <>
-                {/* Completed Orders header — clean white pill */}
                 <div
                   style={{
                     display: "inline-flex",
@@ -1426,7 +1572,6 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
               </div>
             )}
 
-            {/* Active Orders */}
             {activeOrders.length > 0 && (
               <>
                 <p
@@ -1446,15 +1591,13 @@ export default function OrderListPage({ onBack, filterClosed }: Props) {
                     key={order.id}
                     order={order}
                     index={index}
-                    expanded={expanded}
-                    onToggle={toggleExpanded}
                     onDelete={requestDelete}
+                    onHistory={(id) => setHistoryOrderId(id)}
                   />
                 ))}
               </>
             )}
 
-            {/* Closed Orders */}
             {closedOrders.length > 0 && (
               <>
                 <div
